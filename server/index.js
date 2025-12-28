@@ -126,6 +126,30 @@ io.on('connection', (socket) => {
                 { $push: { comments: comment } }
             );
             socket.to(roomId).emit('new-comment', comment);
+
+            // Detect mentions and notify
+            const mentionRegex = /@(\w+)/g;
+            let match;
+            const mentionedUsers = new Set();
+            while ((match = mentionRegex.exec(comment.text)) !== null) {
+                mentionedUsers.add(match[1]);
+            }
+
+            if (mentionedUsers.size > 0 && roomsUsers[roomId]) {
+                const roomUserEntries = Object.entries(roomsUsers[roomId]);
+                mentionedUsers.forEach(username => {
+                    const foundUser = roomUserEntries.find(([id, user]) => user.name === username);
+                    if (foundUser) {
+                        const [socketId, _] = foundUser;
+                        io.to(socketId).emit('mention-notification', {
+                            commentId: comment.commentId,
+                            author: comment.author,
+                            text: comment.text
+                        });
+                    }
+                });
+            }
+
         } catch (err) {
             console.error('Error adding comment:', err);
         }
@@ -153,6 +177,15 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('Error deleting comment:', err);
         }
+    });
+
+    socket.on('cursor-update', ({ roomId, editorId, cursor, user }) => {
+        // user: { name, color }
+        socket.to(roomId).emit('remote-cursor-update', { editorId, cursor, user, socketId: socket.id });
+    });
+
+    socket.on('typing-update', ({ roomId, user, isTyping }) => {
+        socket.to(roomId).emit('remote-typing-update', { user, isTyping, socketId: socket.id });
     });
 
     socket.on('disconnect', () => {

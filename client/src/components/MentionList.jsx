@@ -6,7 +6,7 @@ const MentionList = forwardRef((props, ref) => {
     const selectItem = (index) => {
         const item = props.items[index];
         if (item) {
-            props.command({ id: item });
+            props.command({ id: item.label || item });
         }
     };
 
@@ -50,12 +50,22 @@ const MentionList = forwardRef((props, ref) => {
                         className={`mention-item ${index === selectedIndex ? 'is-selected' : ''}`}
                         key={index}
                         onClick={() => selectItem(index)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
-                        {item}
+                        {item.color && (
+                            <div style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '50%',
+                                backgroundColor: item.color,
+                                border: '1px solid var(--bg-primary)'
+                            }} />
+                        )}
+                        {item.label || item}
                     </div>
                 ))
             ) : (
-                <div className="item">No result</div>
+                <div className="item" style={{ padding: '8px 12px', opacity: 0.5 }}>No result</div>
             )}
         </div>
     );

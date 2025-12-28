@@ -80,11 +80,28 @@ const RoomPage = () => {
     const [directComment, setDirectComment] = useState('');
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingCommentText, setEditingCommentText] = useState('');
+    const [typingUsers, setTypingUsers] = useState({}); // { username: boolean }
+    const [replyText, setReplyText] = useState('');
+    const [replyingToId, setReplyingToId] = useState(null);
 
     // Modal States
     const [isIconModalOpen, setIsIconModalOpen] = useState(false);
     const [editingIconEditorId, setEditingIconEditorId] = useState(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [mentionNotification, setMentionNotification] = useState(null);
+
+    const renderCommentText = (text) => {
+        if (!text) return null;
+        const parts = text.split(/(@\w+)/g);
+        return parts.map((part, i) => {
+            if (part.match(/^@\w+$/)) {
+                return (
+                    <span key={i} className="mention" style={{ verticalAlign: 'baseline', display: 'inline-block' }}>{part}</span>
+                );
+            }
+            return part;
+        });
+    };
 
 
 
@@ -112,10 +129,39 @@ const RoomPage = () => {
             });
         });
 
+        socket.on('editor-remote-update', ({ editorId, content }) => {
+            setRoomData(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    editors: prev.editors.map(e => e.editorId === editorId ? { ...e, content } : e)
+                };
+            });
+        });
+
+        socket.on('remote-typing-update', ({ user, isTyping }) => {
+            setTypingUsers(prev => ({ ...prev, [user.name]: isTyping }));
+            if (isTyping) {
+                // Auto-clear after a few seconds in case we miss the stop event
+                setTimeout(() => {
+                    setTypingUsers(prev => ({ ...prev, [user.name]: false }));
+                }, 3000);
+            }
+        });
+
+        socket.on('mention-notification', ({ author, text }) => {
+            setMentionNotification({ author, text });
+            // Play a subtle sound if desired, or just show visual
+            setTimeout(() => setMentionNotification(null), 5000);
+        });
+
         return () => {
             socket.off('room-remote-data-refetch');
             socket.off('collaborators-update');
             socket.off('new-comment');
+            socket.off('editor-remote-update');
+            socket.off('remote-typing-update');
+            socket.off('mention-notification');
             socket.off('join-room');
         };
     }, [roomId, userName]);
@@ -215,6 +261,25 @@ const RoomPage = () => {
                 comments: prev.comments.filter(c => c.commentId !== commentId)
             }));
         }
+    };
+
+    const handlePostReply = (parentId) => {
+        if (!replyText.trim()) return;
+        const newComment = {
+            commentId: Math.random().toString(36).substring(2, 9),
+            editorId: activeEditorId || 'global',
+            text: replyText,
+            author: userName,
+            parentId,
+            createdAt: new Date().toISOString()
+        };
+        socket.emit('add-comment', { roomId, comment: newComment });
+        setRoomData(prev => ({
+            ...prev,
+            comments: [...(prev.comments || []), newComment]
+        }));
+        setReplyText('');
+        setReplyingToId(null);
     };
 
     const submitCommentEdit = (commentId) => {
@@ -401,8 +466,11 @@ const RoomPage = () => {
                                 <div className="flex items-center gap-2">
                                     <div className="flex -space-x-1.5 overflow-hidden">
                                         {(collaborators.length > 0 ? collaborators : [{ name: userName }]).slice(0, 3).map((c, i) => (
-                                            <div key={i} style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-4 h-4 rounded-full border border-bg-primary text-bg-primary flex items-center justify-center text-[7px] font-black z-10 transition-transform hover:scale-110 uppercase">
+                                            <div key={i} style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-4 h-4 rounded-full border border-bg-primary text-bg-primary flex items-center justify-center text-[7px] font-black z-10 transition-transform hover:scale-110 uppercase relative">
                                                 {c.name?.[0]}
+                                                {typingUsers[c.name] && (
+                                                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-text-primary rounded-full animate-pulse border border-bg-primary" />
+                                                )}
                                             </div>
                                         ))}
                                         {collaborators.length > 3 && (
@@ -426,8 +494,11 @@ const RoomPage = () => {
                                                 onClick={() => handleUserClick(c.name)}
                                                 className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-bg-secondary cursor-pointer transition-colors group/item"
                                             >
-                                                <div style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-5 h-5 rounded border border-border-color flex items-center justify-center text-[9px] font-bold uppercase text-bg-primary transition-colors">
+                                                <div style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-5 h-5 rounded border border-border-color flex items-center justify-center text-[9px] font-bold uppercase text-bg-primary transition-colors relative">
                                                     {c.name?.[0]}
+                                                    {typingUsers[c.name] && (
+                                                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-text-primary rounded-full animate-pulse border border-bg-primary" />
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[11px] font-bold text-text-primary leading-none mb-0.5">{c.name}</span>
@@ -514,11 +585,11 @@ const RoomPage = () => {
                                 </h2>
 
                                 <div className="space-y-10 max-w-3xl border-l-2 border-border-color ml-4">
-                                    {(roomData.comments || []).length === 0 ? (
+                                    {(roomData.comments || []).filter(c => !c.parentId).length === 0 ? (
                                         <div className="pl-8 text-text-primary font-black italic uppercase text-2xl tracking-tighter">Void...</div>
                                     ) : (
-                                        roomData.comments.map(c => (
-                                            <div key={c.commentId} className="relative group pr-4">
+                                        (roomData.comments || []).filter(c => !c.parentId).map(c => (
+                                            <div key={c.commentId} className="relative group pr-4 mb-8">
                                                 {/* Left Decorative Line / Avatar */}
                                                 <div style={{ backgroundColor: getUserColor(c.author, currentTheme) }} className="absolute -left-[11px] top-0 w-5 h-5 border-2 border-bg-primary flex items-center justify-center text-[8px] font-black text-bg-primary">
                                                     {c.author[0]}
@@ -530,6 +601,7 @@ const RoomPage = () => {
                                                         <span className="text-[8px] font-bold uppercase">{new Date(c.createdAt).toLocaleTimeString()}</span>
 
                                                         <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
+                                                            <button onClick={() => { setReplyingToId(replyingToId === c.commentId ? null : c.commentId); setReplyText(''); }} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Reply</button>
                                                             {c.author === userName && (
                                                                 <>
                                                                     <button onClick={() => { setEditingCommentId(c.commentId); setEditingCommentText(c.text) }} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Edit</button>
@@ -539,6 +611,12 @@ const RoomPage = () => {
                                                             <button onClick={() => handleFileOpen(c.editorId)} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Jump</button>
                                                         </div>
                                                     </div>
+
+                                                    {c.context && (
+                                                        <div className="mb-2 pl-2 border-l-2 border-text-secondary opacity-70 text-[10px] italic font-mono bg-bg-secondary p-1">
+                                                            {c.context}
+                                                        </div>
+                                                    )}
 
                                                     {editingCommentId === c.commentId ? (
                                                         <div className="flex gap-2">
@@ -552,86 +630,147 @@ const RoomPage = () => {
                                                             <Check onClick={() => submitCommentEdit(c.commentId)} className="w-4 h-4 text-text-primary cursor-pointer" />
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-text-primary leading-relaxed max-w-xl">{c.text}</p>
+                                                        <p className="text-sm text-text-primary leading-relaxed max-w-xl mb-3">{renderCommentText(c.text)}</p>
                                                     )}
+
+                                                    {/* Replies */}
+                                                    <div className="space-y-4 mt-2">
+                                                        {roomData.comments.filter(r => r.parentId === c.commentId).map(reply => (
+                                                            <div key={reply.commentId} className="flex gap-3 relative group/reply">
+                                                                <div className="absolute -left-[18px] top-0 w-[2px] h-full bg-border-color"></div>
+                                                                <div style={{ backgroundColor: getUserColor(reply.author, currentTheme) }} className="w-4 h-4 shrink-0 rounded-full border border-bg-primary flex items-center justify-center text-[6px] font-black text-bg-primary z-10">
+                                                                    {reply.author[0]}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <span className="text-[9px] font-bold uppercase text-text-primary">{reply.author}</span>
+                                                                        <span className="text-[7px] font-medium opacity-50">{new Date(reply.createdAt).toLocaleTimeString()}</span>
+                                                                        {reply.author === userName && (
+                                                                            <button onClick={() => handleDeleteComment(reply.commentId)} className="ml-auto opacity-0 group-hover/reply:opacity-100 text-[7px] font-black uppercase text-red-500">Delete</button>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-text-primary leading-tight">{renderCommentText(reply.text)}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
+
+                                                {/* Reply Input */}
+                                                {replyingToId === c.commentId && (
+                                                    <div className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-1">
+                                                        <input
+                                                            autoFocus
+                                                            type="text"
+                                                            value={replyText}
+                                                            onChange={(e) => setReplyText(e.target.value)}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handlePostReply(c.commentId)}
+                                                            placeholder="Write a reply..."
+                                                            className="flex-1 bg-bg-secondary border-none px-3 py-1.5 text-xs text-text-primary outline-none focus:ring-1 focus:ring-text-primary"
+                                                        />
+                                                        <button onClick={() => handlePostReply(c.commentId)} className="px-3 bg-text-primary text-bg-primary text-[9px] font-black uppercase">Send</button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))
+                        </div>
+                                ))
                                     )}
-                                </div>
                             </div>
+                        </div>
 
                             {/* NEW DIRECT COMMENT BAR */}
-                            <div className="p-6 bg-bg-secondary border-t border-border-color">
-                                <div className="max-w-3xl mx-auto flex gap-4">
-                                    <input
-                                        type="text"
-                                        value={directComment}
-                                        onChange={(e) => setDirectComment(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handlePostDirectComment()}
-                                        placeholder={`Broadcast as ${userName}...`}
-                                        className="flex-1 bg-bg-primary border border-border-color rounded-none px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all text-text-primary"
-                                    />
-                                    <button
-                                        onClick={handlePostDirectComment}
-                                        className="bg-text-primary text-bg-primary p-3 hover:opacity-80 transition-opacity"
-                                    >
-                                        <Send className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ) : activeEditor ? (
-                        <Editor
-                            key={activeEditorId}
-                            content={activeEditor?.content}
-                            socket={socket}
-                            roomId={roomId}
-                            editorId={activeEditorId}
-                            userName={userName}
-                            onUpdate={(json) => {
-                                setRoomData(prev => ({
-                                    ...prev,
-                                    editors: prev.editors.map(ed => ed.editorId === activeEditorId ? { ...ed, content: json } : ed)
-                                }));
-                            }}
-                            onAddComment={(c) => {
-                                setRoomData(prev => ({
-                                    ...prev,
-                                    comments: [...(prev.comments || []), c]
-                                }));
-                            }}
-                            collaborators={collaborators}
-                        />
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12 text-center">
-                            <div className="w-24 h-24 border border-border-color rounded-full flex items-center justify-center mb-4">
-                                <Terminal className="w-10 h-10 opacity-20 text-text-primary" />
-                            </div>
-                            <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40 text-text-primary">Workspace Ready</h3>
-                            <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
-                        </div>
-                    )}
-                </div>
-            </main>
-
-            {/* MODALS */}
-            <Modal isOpen={isIconModalOpen} onClose={() => setIsIconModalOpen(false)} title="Archetype Definition">
-                <div className="space-y-8">
-                    <div className="grid grid-cols-4 gap-3">
-                        {Object.keys(ICON_MAP).map(iconName => (
+                    <div className="p-6 bg-bg-secondary border-t border-border-color">
+                        <div className="max-w-3xl mx-auto flex gap-4">
+                            <input
+                                type="text"
+                                value={directComment}
+                                onChange={(e) => setDirectComment(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handlePostDirectComment()}
+                                placeholder={`Broadcast as ${userName}...`}
+                                className="flex-1 bg-bg-primary border border-border-color rounded-none px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all text-text-primary"
+                            />
                             <button
-                                key={iconName}
-                                onClick={() => updateEditorStyle(editingIconEditorId, iconName, 'var(--text-primary)')}
-                                className="p-4 bg-bg-primary border border-border-color hover:bg-text-primary hover:text-bg-primary flex items-center justify-center transition-all group"
+                                onClick={handlePostDirectComment}
+                                className="bg-text-primary text-bg-primary p-3 hover:opacity-80 transition-opacity"
                             >
-                                {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6" })}
+                                <Send className="w-5 h-5" />
                             </button>
-                        ))}
+                        </div>
                     </div>
+                </div >
+                ) : activeEditor ? (
+                <Editor
+                    key={activeEditorId}
+                    content={activeEditor?.content}
+                    socket={socket}
+                    roomId={roomId}
+                    editorId={activeEditorId}
+                    userName={userName}
+                    onUpdate={(json) => {
+                        setRoomData(prev => ({
+                            ...prev,
+                            editors: prev.editors.map(ed => ed.editorId === activeEditorId ? { ...ed, content: json } : ed)
+                        }));
+                    }}
+                    onAddComment={(c) => {
+                        setRoomData(prev => ({
+                            ...prev,
+                            comments: [...(prev.comments || []), c]
+                        }));
+                    }}
+                    collaborators={collaborators}
+                    theme={currentTheme}
+                />
+                ) : (
+                <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12 text-center">
+                    <div className="w-24 h-24 border border-border-color rounded-full flex items-center justify-center mb-4">
+                        <Terminal className="w-10 h-10 opacity-20 text-text-primary" />
+                    </div>
+                    <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40 text-text-primary">Workspace Ready</h3>
+                    <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
                 </div>
-            </Modal>
+)}
+        </div >
+            </main >
+
+    {/* MODALS */ }
+    < Modal isOpen = { isIconModalOpen } onClose = {() => setIsIconModalOpen(false)} title = "Archetype Definition" >
+        <div className="space-y-8">
+            <div className="grid grid-cols-4 gap-3">
+                {Object.keys(ICON_MAP).map(iconName => (
+                    <button
+                        key={iconName}
+                        onClick={() => updateEditorStyle(editingIconEditorId, iconName, 'var(--text-primary)')}
+                        className="p-4 bg-bg-primary border border-border-color hover:bg-text-primary hover:text-bg-primary flex items-center justify-center transition-all group"
+                    >
+                        {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6" })}
+                    </button>
+                ))}
+            </div>
         </div>
+            </Modal >
+
+    {/* Notification Toast */ }
+{
+    mentionNotification && (
+        <div className="fixed bottom-6 right-6 z-[100] bg-bg-primary border border-text-primary shadow-2xl p-4 max-w-sm animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-text-primary text-bg-primary flex items-center justify-center font-black rounded-full shrink-0">
+                    @
+                </div>
+                <div>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary mb-1">New Mention</p>
+                    <p className="text-xs font-bold text-text-primary mb-1">{mentionNotification.author} mentioned you:</p>
+                    <p className="text-xs text-text-primary opacity-80 italic line-clamp-2">"{mentionNotification.text}"</p>
+                </div>
+                <button onClick={() => setMentionNotification(null)} className="ml-auto text-text-primary hover:opacity-50">
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    )
+}
+        </div >
     );
 };
 

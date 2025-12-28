@@ -7,6 +7,7 @@ const CommentSchema = new mongoose.Schema({
     author: { type: String, required: true },
     selection: { type: mongoose.Schema.Types.Mixed },
     parentId: { type: String, default: null }, // Support for YouTube-style threading
+    context: { type: String, default: '' }, // Selected text context
     createdAt: { type: Date, default: Date.now }
 });
 

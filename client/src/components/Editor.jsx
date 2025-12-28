@@ -16,13 +16,78 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 
+import { CursorExtension, cursorPluginKey } from '../extensions/CursorExtension';
+
 // Strict B&W Highlight - just use opacity
 const HIGHLIGHT_COLOR = 'var(--text-primary)';
 
-const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddComment, collaborators = [] }) => {
+const getUserColor = (username, theme) => {
+    if (!username) return 'var(--text-primary)';
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    const s = 80;
+    const l = theme === 'dark' ? 75 : 40;
+    return `hsl(${h}, ${s}%, ${l}%)`;
+};
+
+function throttle(func, limit) {
+    let lastFunc;
+    let lastRan;
+    return function (...args) {
+        if (!lastRan) {
+            func.apply(this, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function () {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(this, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
+
+const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddComment, collaborators = [], theme }) => {
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
     const [commentText, setCommentText] = useState('');
     const [copyFeedback, setCopyFeedback] = useState(false);
+    const [remoteCursors, setRemoteCursors] = useState({});
+
+    const emitCursor = React.useRef(throttle((socket, roomId, editorId, userName, selection) => {
+        if (socket) {
+            socket.emit('cursor-update', {
+                roomId,
+                editorId,
+                cursor: { head: selection.head, anchor: selection.anchor },
+                user: { name: userName }
+            });
+        }
+    }, 50)).current;
+
+    const emitTyping = React.useRef(throttle((socket, roomId, userName, isTyping) => {
+        if (socket) {
+            socket.emit('typing-update', { roomId, user: { name: userName }, isTyping });
+        }
+    }, 1000)).current;
+
+    const stopTyping = React.useRef(debounce((socket, roomId, userName) => {
+        if (socket) {
+            socket.emit('typing-update', { roomId, user: { name: userName }, isTyping: false });
+        }
+    }, 2000)).current;
 
     const editor = useEditor({
         extensions: [
@@ -32,6 +97,7 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
             }),
             Highlight.configure({ multicolor: true }),
             BubbleMenuExtension,
+            CursorExtension, // Custom Cursor Extension
             Comment,
             Mention.configure({
                 HTMLAttributes: {
@@ -39,8 +105,14 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
                 },
                 suggestion: {
                     items: ({ query }) => {
-                        const users = collaborators.length > 0 ? collaborators.map(c => c.name) : [userName];
-                        return users.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 5);
+                        const users = collaborators.length > 0 ? collaborators : [{ name: userName }];
+                        return users
+                            .filter(u => u.name.toLowerCase().startsWith(query.toLowerCase()))
+                            .slice(0, 5)
+                            .map(u => ({
+                                label: u.name,
+                                color: getUserColor(u.name, theme)
+                            }));
                     },
                     render: () => {
                         let component;
@@ -99,8 +171,14 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
             if (typeof onUpdate === 'function') onUpdate(json);
             if (socket) {
                 socket.emit('editor-update', { roomId, editorId, content: json });
+                emitTyping(socket, roomId, userName, true);
+                stopTyping(socket, roomId, userName);
+                emitCursor(socket, roomId, editorId, userName, editor.state.selection);
             }
         },
+        onSelectionUpdate: ({ editor }) => {
+            emitCursor(socket, roomId, editorId, userName, editor.state.selection);
+        }
     });
 
     useEffect(() => {
@@ -114,9 +192,36 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
                 }
             }
         };
+        const handleRemoteCursor = ({ editorId: eId, cursor, user, socketId }) => {
+            if (eId !== editorId) return;
+            setRemoteCursors(prev => ({ ...prev, [socketId]: { cursor, user } }));
+        };
+
         socket.on('editor-remote-update', handleRemoteUpdate);
-        return () => socket.off('editor-remote-update', handleRemoteUpdate);
+        socket.on('remote-cursor-update', handleRemoteCursor);
+
+        return () => {
+            socket.off('editor-remote-update', handleRemoteUpdate);
+            socket.off('remote-cursor-update', handleRemoteCursor);
+        };
     }, [editor, socket, editorId]);
+
+    // Update cursors in editor
+    useEffect(() => {
+        if (!editor) return;
+        const cursors = Object.values(remoteCursors).map(c => ({
+            ...c,
+            user: { ...c.user, color: getUserColor(c.user.name, theme) }
+        }));
+
+        try {
+            const tr = editor.state.tr;
+            tr.setMeta(cursorPluginKey, { type: 'update', cursors });
+            editor.view.dispatch(tr);
+        } catch (e) {
+            console.error('Error dispatching cursor update:', e);
+        }
+    }, [remoteCursors, editor, theme]);
 
     useEffect(() => {
         if (editor && content) {
@@ -140,11 +245,16 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
         const commentId = Math.random().toString(36).substring(2, 9);
         editor.chain().focus().setComment(commentId).run();
 
+        const { from, to } = editor.state.selection;
+        const context = editor.state.doc.textBetween(from, to, ' ');
+
         const newComment = {
             commentId,
             editorId,
             text: commentText,
             author: userName,
+            context,
+            parentId: null,
             createdAt: new Date().toISOString()
         };
 
