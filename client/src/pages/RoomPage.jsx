@@ -373,7 +373,7 @@ const RoomPage = () => {
                 {/* Brand & Explorer */}
                 <div className="p-4 border-b border-border-color">
                     <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-primary">Explorer</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-primary">Live Clipboard</span>
                         <div className="flex gap-1">
                             <Plus onClick={createEditor} className="w-3.5 h-3.5 cursor-pointer text-text-primary hover:opacity-50 transition-opacity" />
                             <MoreHorizontal className="w-3.5 h-3.5 cursor-pointer text-text-primary hover:opacity-50" />
@@ -480,13 +480,13 @@ const RoomPage = () => {
                 <div className="h-14 px-8 border-b border-border-color bg-bg-primary flex items-center justify-between shrink-0 gap-6">
                     <div className="flex items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Project</span>
+                            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Room</span>
                             <span className="text-sm font-bold font-mono text-text-primary tracking-tight">{roomId}</span>
                         </div>
 
                         <div className="relative group/collab">
                             <div className="flex flex-col cursor-pointer" onClick={() => setShowCollabList(!showCollabList)}>
-                                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Team</span>
+                                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Collaborators</span>
                                 <div className="flex items-center gap-2">
                                     <div className="flex -space-x-1.5 overflow-hidden">
                                         {(collaborators.length > 0 ? collaborators : [{ name: userName }]).slice(0, 3).map((c, i) => (
