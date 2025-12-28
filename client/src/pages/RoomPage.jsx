@@ -310,12 +310,15 @@ const RoomPage = () => {
                 {/* Sidebar Footer */}
                 <div className="mt-auto border-t border-border-color">
                     <button
-                        onClick={() => setShowCommentsPanel(!showCommentsPanel)}
-                        className={`w-full flex items-center gap-3 px-6 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${showCommentsPanel ? 'text-bg-primary bg-text-primary' : 'text-text-primary hover:opacity-50'}`}
+                        onClick={() => {
+                            setShowCommentsPanel(true);
+                            setActiveEditorId('comments');
+                        }}
+                        className={`w-full flex items-center gap-3 px-6 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${activeEditorId === 'comments' ? 'text-bg-primary bg-text-primary' : 'text-text-primary hover:opacity-50'}`}
                     >
                         <MessageSquare className="w-4 h-4" />
                         Discussions
-                        {roomData.comments?.length > 0 && <span className="ml-auto border border-bg-primary px-1.5 py-0.5 rounded-full text-[9px] font-black">{roomData.comments.length}</span>}
+                        {roomData.comments?.length > 0 && <span className={`ml-auto border px-1.5 py-0.5 rounded-full text-[9px] font-black ${activeEditorId === 'comments' ? 'border-bg-primary' : 'border-text-primary'}`}>{roomData.comments.length}</span>}
                     </button>
 
                     <div className="p-3 px-6 flex items-center justify-between">
@@ -441,7 +444,7 @@ const RoomPage = () => {
 
                 {/* CONTENT AREA */}
                 <div className="flex-1 flex overflow-hidden">
-                    {activeEditorId === 'comments' || (showCommentsPanel && activeEditorId === null) ? (
+                    {activeEditorId === 'comments' ? (
                         <div className="flex-1 flex flex-col bg-bg-primary overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar">
                                 <h2 className="text-xl font-black text-text-primary uppercase tracking-[0.2em] mb-12 flex items-center gap-4">
@@ -451,7 +454,7 @@ const RoomPage = () => {
 
                                 <div className="space-y-10 max-w-3xl border-l-2 border-border-color ml-4">
                                     {(roomData.comments || []).length === 0 ? (
-                                        <div className="pl-8 text-text-primary opacity-20 font-black italic uppercase text-2xl tracking-tighter">Void...</div>
+                                        <div className="pl-8 text-text-primary font-black italic uppercase text-2xl tracking-tighter">Void...</div>
                                     ) : (
                                         roomData.comments.map(c => (
                                             <div key={c.commentId} className="relative group pr-4">
@@ -463,16 +466,16 @@ const RoomPage = () => {
                                                 <div className="pl-8">
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">{c.author}</span>
-                                                        <span className="text-[8px] font-bold opacity-30 uppercase">{new Date(c.createdAt).toLocaleTimeString()}</span>
+                                                        <span className="text-[8px] font-bold uppercase">{new Date(c.createdAt).toLocaleTimeString()}</span>
 
                                                         <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
                                                             {c.author === userName && (
                                                                 <>
-                                                                    <button onClick={() => { setEditingCommentId(c.commentId); setEditingCommentText(c.text) }} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Edit</button>
-                                                                    <button onClick={() => handleDeleteComment(c.commentId)} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Delete</button>
+                                                                    <button onClick={() => { setEditingCommentId(c.commentId); setEditingCommentText(c.text) }} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Edit</button>
+                                                                    <button onClick={() => handleDeleteComment(c.commentId)} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Delete</button>
                                                                 </>
                                                             )}
-                                                            <button onClick={() => handleFileOpen(c.editorId)} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Jump</button>
+                                                            <button onClick={() => handleFileOpen(c.editorId)} className="text-[8px] font-black text-text-primary uppercase border border-text-primary px-1">Jump</button>
                                                         </div>
                                                     </div>
 
@@ -488,7 +491,7 @@ const RoomPage = () => {
                                                             <Check onClick={() => submitCommentEdit(c.commentId)} className="w-4 h-4 text-text-primary cursor-pointer" />
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-text-primary opacity-80 leading-relaxed max-w-xl">{c.text}</p>
+                                                        <p className="text-sm text-text-primary leading-relaxed max-w-xl">{c.text}</p>
                                                     )}
                                                 </div>
                                             </div>

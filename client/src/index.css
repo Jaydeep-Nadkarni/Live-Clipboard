@@ -124,8 +124,20 @@ body {
 /* Comment Mark */
 .comment-mark {
   background-color: transparent;
-  border-bottom: 2px solid var(--text-primary);
+  border-bottom: 4px solid var(--text-primary);
   cursor: pointer;
+}
+
+mark {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.mention {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  padding: 0 0.2rem;
+  font-weight: bold;
 }
 
 /* Smooth Transitions */

@@ -17,6 +17,7 @@
     "@tiptap/extension-placeholder": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
+    "@tiptap/suggestion": "^3.14.0",
     "axios": "^1.13.2",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.23.26",

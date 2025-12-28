@@ -188,7 +188,7 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
 
                 {/* Single B&W Highlight Toggle */}
                 <button
-                    onClick={() => editor.chain().focus().toggleHighlight({ color: 'rgba(128,128,128,0.3)' }).run()}
+                    onClick={() => editor.chain().focus().toggleHighlight().run()}
                     className={`p-2 hover:bg-text-primary hover:text-bg-primary transition-colors ${editor.isActive('highlight') ? 'bg-text-primary text-bg-primary' : 'text-text-primary'}`}
                 >
                     <Highlighter className="w-3.5 h-3.5" />
