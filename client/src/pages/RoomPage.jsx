@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Plus, Share2, FileText, Settings,
     MoreHorizontal, FolderOpen, Copy,
-    MessageSquare, Hash, User, X
+    MessageSquare, Hash, User, X, Menu
 } from 'lucide-react';
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -20,6 +20,7 @@ const RoomPage = () => {
     const [copyFeedback, setCopyFeedback] = useState('');
     const [userName, setUserName] = useState(`Guest${Math.floor(Math.random() * 1000)}`);
     const [isRenamingUser, setIsRenamingUser] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // UI State
     const [viewedEditors, setViewedEditors] = useState(new Set());
@@ -146,9 +147,25 @@ const RoomPage = () => {
     const activeEditor = roomData.editors.find(e => e.editorId === activeEditorId);
 
     return (
-        <div className="flex h-screen bg-black text-[#cccccc] font-sans text-sm overflow-hidden">
+        <div className="flex h-screen bg-black text-[#cccccc] font-sans text-sm overflow-hidden flex-col md:flex-row relative">
+
+            {/* Mobile Header */}
+            <div className="md:hidden h-12 bg-[#1a1a1a] border-b border-[#333] flex items-center justify-between px-4 shrink-0 z-50">
+                <div className="flex items-center gap-2 font-bold text-[#cccccc]">
+                    <Hash className="w-4 h-4 text-[#007acc]" />
+                    <span>{roomData?.roomId || 'LiveClip'}</span>
+                </div>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 text-white">
+                    {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+            </div>
+
             {/* Sidebar */}
-            <aside className="w-64 border-r border-[#1a1a1a] bg-black flex flex-col shrink-0 select-none">
+            <aside className={`
+                w-64 border-r border-[#1a1a1a] bg-black flex flex-col shrink-0 select-none
+                fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
                 {/* Header Actions */}
                 <div className="p-3 flex flex-col gap-2 border-b border-[#1a1a1a]">
                     <button
@@ -209,11 +226,11 @@ const RoomPage = () => {
                                 return (
                                     <div
                                         key={editor.editorId}
-                                        onClick={() => switchEditor(editor.editorId)}
+                                        onClick={() => { switchEditor(editor.editorId); setMobileMenuOpen(false); }}
                                         onDoubleClick={(e) => startRenaming(e, editor)}
                                         className={`flex items-center px-4 py-1.5 cursor-pointer text-[13px] group relative ${isActive
-                                                ? 'bg-[#1a1a1a] text-white'
-                                                : 'hover:bg-[#0a0a0a] text-[#888] hover:text-[#ccc]'
+                                            ? 'bg-[#1a1a1a] text-white'
+                                            : 'hover:bg-[#0a0a0a] text-[#888] hover:text-[#ccc]'
                                             }`}
                                     >
                                         <div className="flex items-center flex-1 min-w-0">
@@ -272,8 +289,16 @@ const RoomPage = () => {
                 </div>
             </aside>
 
+            {/* Mobile Overlay */}
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
+
             {/* Main Area */}
-            <main className="flex-1 flex flex-col min-w-0 bg-black relative">
+            <main className="flex-1 flex flex-col min-w-0 bg-black relative h-full">
                 {/* No Tabs - Full Height Editor */}
                 <div className="flex-1 w-full h-full relative">
                     <Editor

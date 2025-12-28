@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
+import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
 import { Bold, Italic, MessageSquare, Highlighter } from 'lucide-react';
 
 const Editor = ({ content, onUpdate, socket, roomId, editorId, userName }) => {
@@ -13,6 +15,7 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName }) => {
                 placeholder: 'Start typing...',
             }),
             Highlight.configure({ multicolor: true }),
+            BubbleMenuExtension,
         ],
         editorProps: {
             attributes: {
