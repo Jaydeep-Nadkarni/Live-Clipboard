@@ -23,6 +23,28 @@ const ICON_MAP = {
     FileText, File, Code, Terminal, Database, Layout, Image, Music
 };
 
+const getUserColor = (username, theme) => {
+    if (!username) return 'var(--text-primary)';
+
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const h = Math.abs(hash % 360);
+    // Vibrant saturation
+    const s = 80;
+    // Lightness: Dark theme needs bright colors (for dark bg/black text), 
+    // Light theme needs dark colors (for light bg/white text)
+    // Note: The avatar text color is bg-primary (inverse of theme usually), 
+    // but code uses text-bg-primary which is the background color.
+    // Light Mode: text is #FAFAFA (White). Need Dark BG. -> L = 40%
+    // Dark Mode: text is #0F0F0F (Black). Need Light BG. -> L = 75%
+    const l = theme === 'dark' ? 75 : 40;
+
+    return `hsl(${h}, ${s}%, ${l}%)`;
+};
+
 const RoomPage = () => {
     const { roomId } = useParams();
     const navigate = useNavigate();
@@ -35,8 +57,16 @@ const RoomPage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Theme State
-    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
+    useEffect(() => {
+        document.documentElement.dataset.theme = currentTheme;
+        localStorage.setItem('theme', currentTheme);
+    }, [currentTheme]);
+
+    const toggleTheme = () => {
+        setCurrentTheme(prev => prev === 'light' ? 'dark' : 'light');
+    };
     // Presence & UI
     const [collaborators, setCollaborators] = useState([]);
     const [showCollabList, setShowCollabList] = useState(false);
@@ -56,10 +86,7 @@ const RoomPage = () => {
     const [editingIconEditorId, setEditingIconEditorId] = useState(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-    useEffect(() => {
-        document.body.setAttribute('data-theme', currentTheme);
-        localStorage.setItem('theme', currentTheme);
-    }, [currentTheme]);
+
 
     useEffect(() => {
         localStorage.setItem('userName', userName);
@@ -73,10 +100,22 @@ const RoomPage = () => {
         socket.on('collaborators-update', (list) => {
             setCollaborators(list);
         });
+        socket.on('new-comment', (comment) => {
+            setRoomData(prev => {
+                if (!prev) return prev;
+                // Avoid duplicates if latency is weird
+                if (prev.comments?.some(c => c.commentId === comment.commentId)) return prev;
+                return {
+                    ...prev,
+                    comments: [...(prev.comments || []), comment]
+                };
+            });
+        });
 
         return () => {
             socket.off('room-remote-data-refetch');
             socket.off('collaborators-update');
+            socket.off('new-comment');
             socket.off('join-room');
         };
     }, [roomId, userName]);
@@ -219,7 +258,7 @@ const RoomPage = () => {
         alert(`Copied @${name} to clipboard!`);
     };
 
-    if (!roomData) return <div className="h-screen bg-black flex items-center justify-center text-white font-mono uppercase tracking-[0.5em]">Initializing Workspace</div>;
+    if (!roomData) return <div className="h-screen bg-bg-primary flex items-center justify-center text-text-primary font-mono uppercase tracking-[0.5em]">Initializing Workspace</div>;
 
     const activeEditor = roomData.editors.find(e => e.editorId === activeEditorId);
 
@@ -274,7 +313,7 @@ const RoomPage = () => {
                                 onDoubleClick={(e) => { e.stopPropagation(); setRenamingFileId(editor.editorId); setTempFileName(editor.name); }}
                                 className={`flex items-center px-4 py-3 cursor-pointer text-[13px] group relative transition-all duration-200 border-l-2 ${isActive
                                     ? 'border-text-primary bg-bg-primary text-text-primary'
-                                    : 'border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'
+                                    : 'border-transparent hover:bg-black/5 text-text-secondary hover:text-text-primary'
                                     }`}
                             >
                                 <div
@@ -362,7 +401,7 @@ const RoomPage = () => {
                                 <div className="flex items-center gap-2">
                                     <div className="flex -space-x-1.5 overflow-hidden">
                                         {(collaborators.length > 0 ? collaborators : [{ name: userName }]).slice(0, 3).map((c, i) => (
-                                            <div key={i} className="w-4 h-4 rounded-full border border-bg-primary bg-text-primary text-bg-primary flex items-center justify-center text-[7px] font-black z-10 transition-transform hover:scale-110 uppercase">
+                                            <div key={i} style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-4 h-4 rounded-full border border-bg-primary text-bg-primary flex items-center justify-center text-[7px] font-black z-10 transition-transform hover:scale-110 uppercase">
                                                 {c.name?.[0]}
                                             </div>
                                         ))}
@@ -387,7 +426,7 @@ const RoomPage = () => {
                                                 onClick={() => handleUserClick(c.name)}
                                                 className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-bg-secondary cursor-pointer transition-colors group/item"
                                             >
-                                                <div className="w-5 h-5 rounded border border-border-color flex items-center justify-center text-[9px] font-bold uppercase text-text-primary bg-bg-secondary group-hover/item:border-text-primary group-hover/item:bg-text-primary group-hover/item:text-bg-primary transition-colors">
+                                                <div style={{ backgroundColor: getUserColor(c.name, currentTheme) }} className="w-5 h-5 rounded border border-border-color flex items-center justify-center text-[9px] font-bold uppercase text-bg-primary transition-colors">
                                                     {c.name?.[0]}
                                                 </div>
                                                 <div className="flex flex-col">
@@ -403,8 +442,9 @@ const RoomPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4 ml-auto">
-                        <button onClick={() => setCurrentTheme(currentTheme === 'dark' ? 'light' : 'dark')} className="p-2 hover:opacity-50 transition-opacity">
-                            {currentTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+
+                        <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                            {currentTheme === 'light' ? <Moon className="w-5 h-5 text-text-primary" /> : <Sun className="w-5 h-5 text-text-primary" />}
                         </button>
                         <div className="hidden sm:block h-4 w-[1px] bg-border-color" />
                         <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center hover:opacity-80 transition-opacity">
@@ -429,7 +469,7 @@ const RoomPage = () => {
                                         flex items-center h-full px-5 cursor-pointer transition-all relative flex-shrink flex-grow min-w-[100px] max-w-[200px] group/tab border-r-0
                                         ${isActive
                                             ? 'bg-bg-primary text-text-primary tab-active'
-                                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-primary/50'
+                                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-black/5'
                                         }
                                     `}
                                 >
@@ -480,7 +520,7 @@ const RoomPage = () => {
                                         roomData.comments.map(c => (
                                             <div key={c.commentId} className="relative group pr-4">
                                                 {/* Left Decorative Line / Avatar */}
-                                                <div className="absolute -left-[11px] top-0 w-5 h-5 border-2 border-bg-primary flex items-center justify-center text-[8px] font-black text-bg-primary bg-text-primary">
+                                                <div style={{ backgroundColor: getUserColor(c.author, currentTheme) }} className="absolute -left-[11px] top-0 w-5 h-5 border-2 border-bg-primary flex items-center justify-center text-[8px] font-black text-bg-primary">
                                                     {c.author[0]}
                                                 </div>
 

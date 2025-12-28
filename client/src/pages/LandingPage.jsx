@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Check, ArrowRight, Loader } from 'lucide-react';
+import { Check, ArrowRight, Loader, Sun, Moon } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -11,6 +11,17 @@ const LandingPage = () => {
     const [roomId, setRoomId] = useState('');
     const [isAvailable, setIsAvailable] = useState(null); // null, true, false
     const [isChecking, setIsChecking] = useState(false);
+
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'light');
+
+    useEffect(() => {
+        document.documentElement.dataset.theme = currentTheme;
+        localStorage.setItem('theme', currentTheme);
+    }, [currentTheme]);
+
+    const toggleTheme = () => {
+        setCurrentTheme(prev => prev === 'light' ? 'dark' : 'light');
+    };
 
     // Generate random ID on create mode
     useEffect(() => {
@@ -70,6 +81,12 @@ const LandingPage = () => {
     return (
         <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center text-text-primary font-sans selection:bg-text-primary selection:text-bg-primary transition-colors duration-500">
             <div className="w-full max-w-sm p-10 bg-bg-primary border border-border-color shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-4 right-4 z-50">
+                    <button onClick={toggleTheme} className="p-2 hover:opacity-50 transition-opacity">
+                        {currentTheme === 'light' ? <Moon className="w-5 h-5 text-text-primary" /> : <Sun className="w-5 h-5 text-text-primary" />}
+                    </button>
+                </div>
+
                 <div className="absolute top-0 left-0 w-full h-1 bg-text-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
 
                 <div className="flex gap-8 mb-10 border-b border-border-color pb-4 justify-center">
