@@ -1,30 +1,27 @@
 const mongoose = require('mongoose');
 
+const CommentSchema = new mongoose.Schema({
+    commentId: { type: String, required: true },
+    editorId: { type: String, required: true },
+    text: { type: String, required: true },
+    author: { type: String, required: true },
+    selection: { type: mongoose.Schema.Types.Mixed }, // Stores TiPTap range/pos info
+    createdAt: { type: Date, default: Date.now }
+});
+
 const EditorSchema = new mongoose.Schema({
     editorId: { type: String, required: true },
-    name: { type: String, default: 'Untitled Editor' },
-    content: { type: mongoose.Schema.Types.Mixed, default: {} }
-});
-
-const WhiteboardActionSchema = new mongoose.Schema({
-    type: String, // 'stroke-start', 'stroke-move', 'stroke-end', 'clear'
-    data: mongoose.Schema.Types.Mixed
-});
-
-const MediaSchema = new mongoose.Schema({
-    type: { type: String, enum: ['image', 'audio'] },
-    url: String,
-    size: Number,
-    name: String
+    name: { type: String, default: 'Untitled' },
+    content: { type: mongoose.Schema.Types.Mixed, default: {} },
+    icon: { type: String, default: 'FileText' },
+    iconColor: { type: String, default: '#888888' }
 });
 
 const RoomSchema = new mongoose.Schema({
     roomId: { type: String, required: true, unique: true },
     editors: [EditorSchema],
-    whiteboard: [WhiteboardActionSchema],
-    media: [MediaSchema],
-    totalMediaSize: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now, expires: 86400 } // 24 hours in seconds
+    comments: [CommentSchema],
+    createdAt: { type: Date, default: Date.now, expires: 86400 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Room', RoomSchema);

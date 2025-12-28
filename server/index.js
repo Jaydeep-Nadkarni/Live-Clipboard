@@ -79,6 +79,30 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('update-editor-style', async ({ roomId, editorId, icon, iconColor }) => {
+        try {
+            await Room.findOneAndUpdate(
+                { roomId, 'editors.editorId': editorId },
+                { $set: { 'editors.$.icon': icon, 'editors.$.iconColor': iconColor } }
+            );
+            socket.to(roomId).emit('room-remote-data-refetch');
+        } catch (err) {
+            console.error('Error updating editor style:', err);
+        }
+    });
+
+    socket.on('add-comment', async ({ roomId, comment }) => {
+        try {
+            await Room.findOneAndUpdate(
+                { roomId },
+                { $push: { comments: comment } }
+            );
+            socket.to(roomId).emit('new-comment', comment);
+        } catch (err) {
+            console.error('Error adding comment:', err);
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
     });
