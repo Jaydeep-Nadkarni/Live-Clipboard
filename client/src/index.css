@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  font-family: Consolas, "Courier New", monospace, system-ui;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: #cccccc;
+  background-color: #000000;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #000000;
+}
+
+#root {
+  width: 100%;
+}
+
+/* VS Code-like line numbers for TipTap */
+.ProseMirror {
+  counter-reset: line;
+  padding-left: 3rem;
+  outline: none;
+  min-height: 100%;
+}
+
+.ProseMirror p {
+  position: relative;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.ProseMirror p::before {
+  counter-increment: line;
+  content: counter(line);
+  position: absolute;
+  left: -3rem;
+  width: 2rem;
+  text-align: right;
+  color: #444;
+  /* Darker for minimal distraction */
+  font-size: 0.8rem;
+  user-select: none;
+  font-family: Consolas, monospace;
+}
+
+/* Highlight & Comment Styles */
+.highlight-text {
+  background-color: rgba(255, 215, 0, 0.2);
+  border-bottom: 2px solid #ffd700;
+  cursor: pointer;
+}
+
+.comment-text {
+  background-color: rgba(0, 122, 204, 0.2);
+  border-bottom: 2px solid #007acc;
+  cursor: pointer;
+}
