@@ -2,8 +2,11 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  font-family: Consolas, "Courier New", monospace, system-ui;
-  line-height: 1.5;
+  /* Typography System */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-code: "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+
+  line-height: 1.6;
   font-weight: 400;
 
   color-scheme: dark;
@@ -11,10 +14,11 @@
   /* Strict Black & White - Dark Mode Default */
   --bg-primary: #000000;
   --bg-secondary: #000000;
-  --border-color: #FFFFFF;
+  --border-color: #333333;
+  /* Subtle border for cleaner separation in dark mode */
   --text-primary: #FFFFFF;
-  --text-secondary: #FFFFFF;
-  /* Use opacity for hierarchy if needed, but keeping color pure */
+  --text-secondary: #999999;
+  /* Allowed for hierarchy, still grayscale */
   --accent-color: #FFFFFF;
 
   font-synthesis: none;
@@ -28,9 +32,9 @@
   /* Strict Black & White - Light Mode */
   --bg-primary: #FFFFFF;
   --bg-secondary: #FFFFFF;
-  --border-color: #000000;
+  --border-color: #E5E5E5;
   --text-primary: #000000;
-  --text-secondary: #000000;
+  --text-secondary: #666666;
   --accent-color: #000000;
 }
 
@@ -40,16 +44,20 @@ body {
   min-height: 100vh;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  font-family: var(--font-ui);
+  /* Default to UI font */
   overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #root {
   width: 100%;
 }
 
-/* VS Code-like line numbers */
+/* Editor Specifics - Code Font */
 .ProseMirror {
+  font-family: var(--font-code);
+  font-size: 14px;
   counter-reset: line;
   padding-left: 3.5rem;
   outline: none;
@@ -59,7 +67,8 @@ body {
 .ProseMirror p {
   position: relative;
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.7;
+  /* Better reading experience */
 }
 
 .ProseMirror p::before {
@@ -69,33 +78,32 @@ body {
   left: -3.5rem;
   width: 2.5rem;
   text-align: right;
-  color: var(--text-primary);
-  /* Strict Theme Color */
-  opacity: 1;
-  /* strict */
-  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+  opacity: 0.5;
   user-select: none;
-  font-family: Consolas, monospace;
 }
 
-/* Custom Scrollbar - Minimal */
+/* Custom Scrollbar - Minimal & Clean */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-  border-left: 1px solid var(--border-color);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-primary);
-  border: 1px solid var(--bg-primary);
+  background: var(--border-color);
+  border: 4px solid var(--bg-primary);
+  /* efficient way to make a thin scrollbar */
+  border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-primary);
+  background: var(--text-secondary);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -111,8 +119,9 @@ body {
 .tab-active {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
-  border: 1px solid var(--border-color);
-  border-bottom: none;
+  border-bottom: 2px solid var(--text-primary) !important;
+  /* Clearly active */
+  font-weight: 600;
 }
 
 /* Grayscale Selection */
@@ -124,49 +133,51 @@ body {
 /* Comment Mark */
 .comment-mark {
   background-color: transparent;
-  border-bottom: 4px solid var(--text-primary);
+  border-bottom: 2px solid var(--text-primary);
   cursor: pointer;
 }
 
 mark {
   background-color: var(--text-primary);
   color: var(--bg-primary);
+  padding: 0 4px;
+  border-radius: 2px;
 }
 
 .mention {
   background-color: var(--text-primary);
   color: var(--bg-primary);
-  padding: 0 0.2rem;
-  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9em;
 }
 
-/* Smooth Transitions */
-.transition-theme {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Smooth Transitions for Theme */
+* {
+  border-color: var(--border-color);
+  /* Global border transition */
 }
 
-/* Mention Dropdown Styles */
+/* Dropdown */
 .mention-dropdown {
   background-color: var(--bg-primary);
-  border: 2px solid var(--border-color);
-  color: var(--text-primary);
-  border-radius: 0;
-  overflow: hidden;
-  padding: 0.2rem;
-  box-shadow: none;
-  /* No shadows */
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  /* Subtle deep shadow for depth in B&W */
+  border-radius: 8px;
+  padding: 4px;
 }
 
 .mention-item {
-  background: transparent;
-  color: var(--text-primary);
-  padding: 0.2rem 0.5rem;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
   cursor: pointer;
-  border: 1px solid transparent;
+  transition: all 0.2s;
 }
 
 .mention-item.is-selected {
-  background: var(--text-primary);
+  background-color: var(--text-primary);
   color: var(--bg-primary);
-  border: 1px solid var(--bg-primary);
 }

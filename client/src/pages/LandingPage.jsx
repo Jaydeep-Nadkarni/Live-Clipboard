@@ -68,44 +68,46 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center text-text-primary font-mono selection:bg-text-primary selection:text-bg-primary transition-colors duration-300">
-            <div className="w-full max-w-md p-8 bg-bg-secondary border border-border-color shadow-none">
-                <div className="flex gap-6 mb-8 border-b border-border-color pb-4">
+        <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center text-text-primary font-sans selection:bg-text-primary selection:text-bg-primary transition-colors duration-500">
+            <div className="w-full max-w-sm p-10 bg-bg-primary border border-border-color shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-1 bg-text-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+
+                <div className="flex gap-8 mb-10 border-b border-border-color pb-4 justify-center">
                     <button
                         onClick={() => setMode('create')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'create' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-primary opacity-40 hover:opacity-100'}`}
+                        className={`pb-2 text-xs font-black uppercase tracking-[0.2em] transition-all hover:text-text-primary ${mode === 'create' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-secondary border-transparent'}`}
                     >
-                        Create Room
+                        Create
                     </button>
                     <button
                         onClick={() => setMode('join')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'join' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-primary opacity-40 hover:opacity-100'}`}
+                        className={`pb-2 text-xs font-black uppercase tracking-[0.2em] transition-all hover:text-text-primary ${mode === 'join' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-secondary border-transparent'}`}
                     >
-                        Join Room
+                        Join
                     </button>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="relative">
-                        <label className="block text-xs font-bold text-text-primary opacity-60 uppercase mb-2">
-                            {mode === 'create' ? 'Room ID (Editable)' : 'Enter Room ID'}
+                <div className="space-y-8">
+                    <div className="relative group/input">
+                        <label className="block text-[9px] font-bold text-text-secondary uppercase tracking-widest mb-3">
+                            {mode === 'create' ? 'Project Identifier' : 'Destination ID'}
                         </label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 relative">
                             <input
                                 type="text"
                                 value={roomId}
                                 onChange={handleIdChange}
-                                placeholder="room-id"
-                                className="w-full bg-bg-primary border border-border-color p-3 text-text-primary focus:outline-none focus:border-text-primary transition-colors placeholder-text-primary/30"
+                                placeholder="ID"
+                                className="w-full bg-bg-primary border-b border-border-color py-3 text-lg font-mono text-text-primary focus:outline-none focus:border-text-primary transition-colors placeholder-text-secondary/20"
                             />
                             {mode === 'create' && (
-                                <div className="absolute right-3 top-[2.3rem]">
+                                <div className="absolute right-0 top-3">
                                     {isChecking ? (
-                                        <Loader className="w-4 h-4 text-text-primary animate-spin" />
+                                        <Loader className="w-4 h-4 text-text-secondary animate-spin" />
                                     ) : isAvailable ? (
                                         <Check className="w-4 h-4 text-text-primary" />
                                     ) : (
-                                        <span className="text-text-primary text-xs font-bold">TAKEN</span>
+                                        <span className="text-text-primary text-[9px] font-black tracking-widest bg-text-primary text-bg-primary px-1">TAKEN</span>
                                     )}
                                 </div>
                             )}
@@ -115,20 +117,21 @@ const LandingPage = () => {
                     <button
                         onClick={handleAction}
                         disabled={mode === 'create' && !isAvailable}
-                        className={`w-full py-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider transition-all
+                        className={`w-full py-4 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-[0.25em] transition-all duration-300 border border-text-primary
                             ${mode === 'create' && !isAvailable
-                                ? 'bg-bg-primary text-text-primary opacity-50 cursor-not-allowed border border-border-color'
-                                : 'bg-text-primary text-bg-primary hover:opacity-80'}`}
+                                ? 'opacity-50 cursor-not-allowed bg-transparent text-text-secondary'
+                                : 'bg-text-primary text-bg-primary hover:bg-bg-primary hover:text-text-primary'}`}
                     >
-                        {mode === 'create' ? 'Initialize Environment' : 'Connect to Host'}
+                        {mode === 'create' ? 'Initialize' : 'Connect'}
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
-            <div className="mt-8 text-xs text-text-primary opacity-40 text-center uppercase tracking-widest">
-                <p>LIVE CLIPBOARD • B&W EDITION</p>
-                <p className="mt-1">SECURE • FAST • MINIMAL</p>
+            <div className="mt-12 flex flex-col items-center gap-2 text-[9px] font-bold text-text-secondary uppercase tracking-[0.3em]">
+                <p>Live Clipboard <span className="mx-2">•</span> B&W</p>
+                <div className="w-px h-8 bg-border-color my-2"></div>
+                <p>Secure <span className="mx-2">/</span> Minimal <span className="mx-2">/</span> Fast</p>
             </div>
         </div>
     );

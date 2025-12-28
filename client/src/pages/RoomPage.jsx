@@ -272,17 +272,19 @@ const RoomPage = () => {
                                 key={editor.editorId}
                                 onClick={() => handleFileOpen(editor.editorId)}
                                 onDoubleClick={(e) => { e.stopPropagation(); setRenamingFileId(editor.editorId); setTempFileName(editor.name); }}
-                                className={`flex items-center px-4 py-2 cursor-pointer text-[13px] group relative ${isActive ? 'bg-text-primary text-bg-primary' : 'hover:bg-text-primary hover:text-bg-primary text-text-primary'
+                                className={`flex items-center px-4 py-3 cursor-pointer text-[13px] group relative transition-all duration-200 border-l-2 ${isActive
+                                    ? 'border-text-primary bg-bg-primary text-text-primary'
+                                    : 'border-transparent hover:bg-white/5 text-text-secondary hover:text-text-primary'
                                     }`}
                             >
                                 <div
-                                    className="p-1 px-1.5 rounded transition-colors"
+                                    className="p-1.5 rounded-md transition-colors"
                                     onDoubleClick={(e) => { e.stopPropagation(); setEditingIconEditorId(editor.editorId); setIsIconModalOpen(true); }}
                                 >
-                                    <IconComponent className="w-3.5 h-3.5" style={{ color: 'inherit' }} />
+                                    <IconComponent className="w-4 h-4" style={{ color: 'inherit' }} />
                                 </div>
 
-                                <div className="flex-1 min-w-0 ml-2">
+                                <div className="flex-1 min-w-0 ml-3">
                                     {isRenaming ? (
                                         <input
                                             autoFocus
@@ -292,15 +294,15 @@ const RoomPage = () => {
                                             onBlur={submitRename}
                                             onKeyDown={(e) => e.key === 'Enter' && submitRename()}
                                             onClick={(e) => e.stopPropagation()}
-                                            className="bg-bg-secondary text-text-primary outline-none w-full border border-border-color text-xs px-1"
+                                            className="bg-bg-secondary text-text-primary outline-none w-full border-b border-text-primary text-sm px-1 py-0.5"
                                         />
                                     ) : (
-                                        <span className="truncate block font-medium">{editor.name}</span>
+                                        <span className={`truncate block font-medium tracking-wide ${isActive ? 'text-text-primary' : ''}`}>{editor.name}</span>
                                     )}
                                 </div>
 
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 onClick={(e) => deleteFile(e, editor.editorId)} className="w-3 h-3 hover:scale-125 transition-transform" />
+                                    <Trash2 onClick={(e) => deleteFile(e, editor.editorId)} className="w-3.5 h-3.5 hover:text-red-500 transition-colors" />
                                 </div>
                             </div>
                         );
@@ -347,35 +349,51 @@ const RoomPage = () => {
             <main className="flex-1 flex flex-col min-w-0 relative">
 
                 {/* HEADER INFO */}
-                <div className="p-4 px-8 border-b border-border-color bg-bg-secondary flex items-center justify-between shrink-0 gap-6">
-                    <div className="flex items-center gap-8 overflow-x-auto no-scrollbar">
+                <div className="h-14 px-8 border-b border-border-color bg-bg-primary flex items-center justify-between shrink-0 gap-6">
+                    <div className="flex items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest opacity-50">Project NODE</span>
-                            <span className="text-xs font-bold font-mono">{roomId}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Project</span>
+                            <span className="text-sm font-bold font-mono text-text-primary tracking-tight">{roomId}</span>
                         </div>
-                        <div className="h-6 w-[1px] bg-border-color" />
+
                         <div className="relative group/collab">
                             <div className="flex flex-col cursor-pointer" onClick={() => setShowCollabList(!showCollabList)}>
-                                <span className="text-[8px] font-black uppercase tracking-widest opacity-50">Lobby</span>
-                                <div className="flex items-center gap-1.5">
-                                    <Users className="w-3 h-3" />
-                                    <span className="text-xs font-bold">{collaborators.length || 1} Active</span>
+                                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-text-secondary mb-0.5">Team</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex -space-x-1.5 overflow-hidden">
+                                        {(collaborators.length > 0 ? collaborators : [{ name: userName }]).slice(0, 3).map((c, i) => (
+                                            <div key={i} className="w-4 h-4 rounded-full border border-bg-primary bg-text-primary text-bg-primary flex items-center justify-center text-[7px] font-black z-10 transition-transform hover:scale-110 uppercase">
+                                                {c.name?.[0]}
+                                            </div>
+                                        ))}
+                                        {collaborators.length > 3 && (
+                                            <div className="w-4 h-4 rounded-full border border-bg-primary bg-bg-secondary text-text-secondary flex items-center justify-center text-[7px] font-bold z-0">
+                                                +{collaborators.length - 3}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-medium text-text-primary">Active</span>
                                 </div>
                             </div>
 
                             {/* Fixed Collaborators List UI */}
                             {showCollabList && (
-                                <div className="absolute top-12 left-0 z-[60] bg-bg-secondary border border-border-color p-2 shadow-2xl min-w-[140px]">
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-50 mb-2 p-1">Connected Entities</p>
-                                    <div className="space-y-1">
+                                <div className="absolute top-10 left-0 z-[60] bg-bg-primary border border-border-color rounded-lg shadow-2xl min-w-[180px] p-2 animate-in fade-in zoom-in-95 duration-200">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary mb-2 px-2 py-1">Active Members</p>
+                                    <div className="space-y-0.5">
                                         {(collaborators.length > 0 ? collaborators : [{ name: userName }]).map((c, i) => (
                                             <div
                                                 key={i}
                                                 onClick={() => handleUserClick(c.name)}
-                                                className="flex items-center gap-2 p-1.5 hover:bg-text-primary hover:text-bg-primary cursor-pointer transition-colors"
+                                                className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-bg-secondary cursor-pointer transition-colors group/item"
                                             >
-                                                <div className="w-4 h-4 flex items-center justify-center text-[7px] border border-border-color font-black uppercase">{c.name?.[0]}</div>
-                                                <span className="text-[10px] font-bold truncate">{c.name} {c.name === userName && '(You)'}</span>
+                                                <div className="w-5 h-5 rounded border border-border-color flex items-center justify-center text-[9px] font-bold uppercase text-text-primary bg-bg-secondary group-hover/item:border-text-primary group-hover/item:bg-text-primary group-hover/item:text-bg-primary transition-colors">
+                                                    {c.name?.[0]}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-bold text-text-primary leading-none mb-0.5">{c.name}</span>
+                                                    {c.name === userName && <span className="text-[9px] text-text-secondary leading-none">You</span>}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -408,8 +426,11 @@ const RoomPage = () => {
                                     key={fid}
                                     onClick={() => handleFileOpen(fid)}
                                     className={`
-                                        flex items-center h-full px-4 border-r border-border-color cursor-pointer transition-all relative flex-shrink flex-grow min-w-[80px] max-w-[180px] group/tab
-                                        ${isActive ? 'bg-bg-primary text-text-primary tab-active' : 'hover:bg-text-primary hover:text-bg-primary text-text-primary'}
+                                        flex items-center h-full px-5 cursor-pointer transition-all relative flex-shrink flex-grow min-w-[100px] max-w-[200px] group/tab border-r-0
+                                        ${isActive
+                                            ? 'bg-bg-primary text-text-primary tab-active'
+                                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-primary/50'
+                                        }
                                     `}
                                 >
                                     <IconComp className="w-3 h-3 mr-2 shrink-0" style={{ color: 'inherit' }} />
