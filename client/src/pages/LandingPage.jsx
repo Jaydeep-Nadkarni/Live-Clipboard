@@ -68,18 +68,18 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#1e1e1e] flex flex-col items-center justify-center text-[#cccccc] font-mono selection:bg-[#264f78] selection:text-white">
-            <div className="w-full max-w-md p-8 bg-[#252526] border border-[#3e3e42] shadow-2xl">
-                <div className="flex gap-6 mb-8 border-b border-[#3e3e42] pb-4">
+        <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center text-text-primary font-mono selection:bg-text-primary selection:text-bg-primary transition-colors duration-300">
+            <div className="w-full max-w-md p-8 bg-bg-secondary border border-border-color shadow-none">
+                <div className="flex gap-6 mb-8 border-b border-border-color pb-4">
                     <button
                         onClick={() => setMode('create')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'create' ? 'text-white border-b-2 border-white' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
+                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'create' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-primary opacity-40 hover:opacity-100'}`}
                     >
                         Create Room
                     </button>
                     <button
                         onClick={() => setMode('join')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'join' ? 'text-white border-b-2 border-white' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
+                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'join' ? 'text-text-primary border-b-2 border-text-primary' : 'text-text-primary opacity-40 hover:opacity-100'}`}
                     >
                         Join Room
                     </button>
@@ -87,7 +87,7 @@ const LandingPage = () => {
 
                 <div className="space-y-6">
                     <div className="relative">
-                        <label className="block text-xs font-bold text-[#6e7681] uppercase mb-2">
+                        <label className="block text-xs font-bold text-text-primary opacity-60 uppercase mb-2">
                             {mode === 'create' ? 'Room ID (Editable)' : 'Enter Room ID'}
                         </label>
                         <div className="flex items-center gap-2">
@@ -96,16 +96,16 @@ const LandingPage = () => {
                                 value={roomId}
                                 onChange={handleIdChange}
                                 placeholder="room-id"
-                                className="w-full bg-[#111] border border-[#222] p-3 text-white focus:outline-none focus:border-[#444] transition-colors placeholder-[#444]"
+                                className="w-full bg-bg-primary border border-border-color p-3 text-text-primary focus:outline-none focus:border-text-primary transition-colors placeholder-text-primary/30"
                             />
                             {mode === 'create' && (
                                 <div className="absolute right-3 top-[2.3rem]">
                                     {isChecking ? (
-                                        <Loader className="w-4 h-4 text-[#444] animate-spin" />
+                                        <Loader className="w-4 h-4 text-text-primary animate-spin" />
                                     ) : isAvailable ? (
-                                        <Check className="w-4 h-4 text-white" />
+                                        <Check className="w-4 h-4 text-text-primary" />
                                     ) : (
-                                        <span className="text-white text-xs font-bold">TAKEN</span>
+                                        <span className="text-text-primary text-xs font-bold">TAKEN</span>
                                     )}
                                 </div>
                             )}
@@ -117,8 +117,8 @@ const LandingPage = () => {
                         disabled={mode === 'create' && !isAvailable}
                         className={`w-full py-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider transition-all
                             ${mode === 'create' && !isAvailable
-                                ? 'bg-[#111] text-[#444] cursor-not-allowed'
-                                : 'bg-white text-black hover:bg-[#ccc] shadow-lg'}`}
+                                ? 'bg-bg-primary text-text-primary opacity-50 cursor-not-allowed border border-border-color'
+                                : 'bg-text-primary text-bg-primary hover:opacity-80'}`}
                     >
                         {mode === 'create' ? 'Initialize Environment' : 'Connect to Host'}
                         <ArrowRight className="w-4 h-4" />
@@ -126,8 +126,8 @@ const LandingPage = () => {
                 </div>
             </div>
 
-            <div className="mt-8 text-xs text-[#6e7681] text-center">
-                <p>LIVE CLIPBOARD • VS CODE THEME</p>
+            <div className="mt-8 text-xs text-text-primary opacity-40 text-center uppercase tracking-widest">
+                <p>LIVE CLIPBOARD • B&W EDITION</p>
                 <p className="mt-1">SECURE • FAST • MINIMAL</p>
             </div>
         </div>

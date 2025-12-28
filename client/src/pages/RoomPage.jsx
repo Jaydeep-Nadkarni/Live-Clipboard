@@ -14,6 +14,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import Editor from '../components/Editor';
 import Modal from '../components/Modal';
+import bmcButton from '../assets/bmc-button.png';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const socket = io(import.meta.env.VITE_SOCKET_URL);
@@ -22,14 +23,6 @@ const ICON_MAP = {
     FileText, File, Code, Terminal, Database, Layout, Image, Music
 };
 
-const COLOR_PALETTE = [
-    '#ffffff', '#888888', '#ff4444', '#ffbb33', '#00C851', '#33b5e5', '#aa66cc'
-];
-
-const USER_COLORS = [
-    '#ff4444', '#33b5e5', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c'
-];
-
 const RoomPage = () => {
     const { roomId } = useParams();
     const navigate = useNavigate();
@@ -37,10 +30,12 @@ const RoomPage = () => {
     const [activeEditorId, setActiveEditorId] = useState(null);
     const [openedFiles, setOpenedFiles] = useState([]);
     const [copyFeedback, setCopyFeedback] = useState('');
-    const [userName, setUserName] = useState(`Guest${Math.floor(Math.random() * 1000)}`);
+    const [userName, setUserName] = useState(() => localStorage.getItem('userName') || `Guest${Math.floor(Math.random() * 1000)}`);
     const [isRenamingUser, setIsRenamingUser] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [currentTheme, setCurrentTheme] = useState('dark');
+
+    // Theme State
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
     // Presence & UI
     const [collaborators, setCollaborators] = useState([]);
@@ -63,7 +58,12 @@ const RoomPage = () => {
 
     useEffect(() => {
         document.body.setAttribute('data-theme', currentTheme);
+        localStorage.setItem('theme', currentTheme);
     }, [currentTheme]);
+
+    useEffect(() => {
+        localStorage.setItem('userName', userName);
+    }, [userName]);
 
     useEffect(() => {
         fetchRoomData();
@@ -188,10 +188,11 @@ const RoomPage = () => {
     };
 
     const updateEditorStyle = (editorId, icon, color) => {
-        socket.emit('update-editor-style', { roomId, editorId, icon, iconColor: color });
+        // Strict B&W: Ignore color, just update icon.
+        socket.emit('update-editor-style', { roomId, editorId, icon, iconColor: 'var(--text-primary)' });
         setRoomData(prev => ({
             ...prev,
-            editors: prev.editors.map(ed => ed.editorId === editorId ? { ...ed, icon, iconColor: color } : ed)
+            editors: prev.editors.map(ed => ed.editorId === editorId ? { ...ed, icon, iconColor: 'var(--text-primary)' } : ed)
         }));
         setIsIconModalOpen(false);
     };
@@ -212,24 +213,25 @@ const RoomPage = () => {
         setTimeout(() => setCopyFeedback(''), 2000);
     };
 
-    if (!roomData) return <div className="h-screen bg-black flex items-center justify-center text-[#222] font-mono uppercase tracking-[0.5em]">Initializing Workspace</div>;
+    const handleUserClick = (name) => {
+        // Feature: Mention user helper
+        navigator.clipboard.writeText(`@${name}`);
+        alert(`Copied @${name} to clipboard!`);
+    };
+
+    if (!roomData) return <div className="h-screen bg-black flex items-center justify-center text-white font-mono uppercase tracking-[0.5em]">Initializing Workspace</div>;
 
     const activeEditor = roomData.editors.find(e => e.editorId === activeEditorId);
-    const getUserColor = (name) => {
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
-    };
 
     return (
         <div className="flex h-screen bg-bg-primary text-text-primary font-sans text-sm overflow-hidden flex-col md:flex-row relative transition-colors duration-300">
 
             {/* Mobile Header */}
             <div className="md:hidden h-12 bg-bg-secondary border-b border-border-color flex items-center justify-between px-4 shrink-0 z-50">
-                <div className="flex items-center gap-2 font-bold text-text-secondary uppercase tracking-widest text-[10px]">
+                <div className="flex items-center gap-2 font-bold text-text-primary uppercase tracking-widest text-[10px]">
                     <Terminal className="w-3 h-3" /> {roomId}
                 </div>
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 text-text-secondary">
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 text-text-primary">
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
             </div>
@@ -243,15 +245,15 @@ const RoomPage = () => {
                 {/* Brand & Explorer */}
                 <div className="p-4 border-b border-border-color">
                     <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary">Explorer</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-primary">Explorer</span>
                         <div className="flex gap-1">
-                            <Plus onClick={createEditor} className="w-3.5 h-3.5 cursor-pointer text-text-secondary hover:text-text-primary transition-colors" />
-                            <MoreHorizontal className="w-3.5 h-3.5 cursor-pointer text-text-secondary hover:text-text-primary" />
+                            <Plus onClick={createEditor} className="w-3.5 h-3.5 cursor-pointer text-text-primary hover:opacity-50 transition-opacity" />
+                            <MoreHorizontal className="w-3.5 h-3.5 cursor-pointer text-text-primary hover:opacity-50" />
                         </div>
                     </div>
                     <button
                         onClick={shareLink}
-                        className="w-full bg-bg-primary hover:opacity-80 text-text-secondary hover:text-text-primary border border-border-color text-[10px] font-bold py-2 rounded-md flex items-center justify-center gap-2 transition-all active:scale-95 uppercase tracking-widest"
+                        className="w-full bg-bg-primary hover:opacity-80 text-text-primary border border-border-color text-[10px] font-bold py-2 flex items-center justify-center gap-2 transition-all active:scale-95 uppercase tracking-widest"
                     >
                         <Share2 className="w-3 h-3" />
                         {copyFeedback === 'Link Copied!' ? 'Link Copied' : 'Share Broadcast'}
@@ -262,7 +264,6 @@ const RoomPage = () => {
                 <div className="flex-1 overflow-y-auto py-2">
                     {roomData.editors.map(editor => {
                         const isActive = activeEditorId === editor.editorId;
-                        const isViewed = viewedEditors.has(editor.editorId);
                         const isRenaming = renamingFileId === editor.editorId;
                         const IconComponent = ICON_MAP[editor.icon || 'FileText'];
 
@@ -271,14 +272,14 @@ const RoomPage = () => {
                                 key={editor.editorId}
                                 onClick={() => handleFileOpen(editor.editorId)}
                                 onDoubleClick={(e) => { e.stopPropagation(); setRenamingFileId(editor.editorId); setTempFileName(editor.name); }}
-                                className={`flex items-center px-4 py-2 cursor-pointer text-[13px] group relative ${isActive ? 'bg-bg-primary shadow-[inset_2px_0_0_currentColor]' : 'hover:bg-bg-primary/50 text-text-secondary hover:text-text-primary'
+                                className={`flex items-center px-4 py-2 cursor-pointer text-[13px] group relative ${isActive ? 'bg-text-primary text-bg-primary' : 'hover:bg-text-primary hover:text-bg-primary text-text-primary'
                                     }`}
                             >
                                 <div
-                                    className="p-1 px-1.5 rounded transition-colors hover:bg-white/5"
+                                    className="p-1 px-1.5 rounded transition-colors"
                                     onDoubleClick={(e) => { e.stopPropagation(); setEditingIconEditorId(editor.editorId); setIsIconModalOpen(true); }}
                                 >
-                                    <IconComponent className="w-3.5 h-3.5" style={{ color: editor.iconColor || 'inherit' }} />
+                                    <IconComponent className="w-3.5 h-3.5" style={{ color: 'inherit' }} />
                                 </div>
 
                                 <div className="flex-1 min-w-0 ml-2">
@@ -299,10 +300,8 @@ const RoomPage = () => {
                                 </div>
 
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 onClick={(e) => deleteFile(e, editor.editorId)} className="w-3 h-3 text-rose-500 hover:scale-125 transition-transform" />
+                                    <Trash2 onClick={(e) => deleteFile(e, editor.editorId)} className="w-3 h-3 hover:scale-125 transition-transform" />
                                 </div>
-
-                                {!isViewed && <div className="w-1.5 h-1.5 rounded-full bg-accent-color ml-2 animate-pulse" title="Unread" style={{ backgroundColor: 'var(--accent-color)' }} />}
                             </div>
                         );
                     })}
@@ -312,34 +311,31 @@ const RoomPage = () => {
                 <div className="mt-auto border-t border-border-color">
                     <button
                         onClick={() => setShowCommentsPanel(!showCommentsPanel)}
-                        className={`w-full flex items-center gap-3 px-6 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${showCommentsPanel ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                        className={`w-full flex items-center gap-3 px-6 py-4 text-xs font-bold uppercase tracking-widest transition-colors ${showCommentsPanel ? 'text-bg-primary bg-text-primary' : 'text-text-primary hover:opacity-50'}`}
                     >
                         <MessageSquare className="w-4 h-4" />
                         Discussions
-                        {roomData.comments?.length > 0 && <span className="ml-auto bg-text-secondary text-bg-primary px-1.5 py-0.5 rounded-full text-[9px] font-black">{roomData.comments.length}</span>}
+                        {roomData.comments?.length > 0 && <span className="ml-auto border border-bg-primary px-1.5 py-0.5 rounded-full text-[9px] font-black">{roomData.comments.length}</span>}
                     </button>
 
                     <div className="p-3 px-6 flex items-center justify-between">
                         <div className="flex items-center gap-2 max-w-[80%] group">
-                            <User className="w-3 h-3 text-text-secondary" />
+                            <User className="w-3 h-3 text-text-primary" />
                             {isRenamingUser ? (
                                 <input
                                     autoFocus
                                     className="bg-transparent outline-none text-text-primary w-full border-b border-border-color text-[11px]"
                                     value={userName}
                                     onChange={(e) => setUserName(e.target.value)}
-                                    onBlur={() => setIsRenamingUser(false)}
-                                    onKeyDown={(e) => e.key === 'Enter' && setIsRenamingUser(false)}
+                                    onBlur={() => { setIsRenamingUser(false); socket.emit('rename-user', { roomId, newName: userName }); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { setIsRenamingUser(false); socket.emit('rename-user', { roomId, newName: userName }); } }}
                                 />
                             ) : (
-                                <span onDoubleClick={() => setIsRenamingUser(true)} className="text-[11px] font-bold text-text-secondary hover:text-text-primary cursor-text transition-colors">
+                                <span onDoubleClick={() => setIsRenamingUser(true)} className="text-[11px] font-bold text-text-primary cursor-text transition-colors">
                                     {userName}
                                 </span>
                             )}
                         </div>
-                    </div>
-                    <div className="px-6 pb-4 text-[9px] font-bold opacity-30 uppercase tracking-[0.2em]">
-                        Made with love by Jaydeep
                     </div>
                 </div>
             </aside>
@@ -348,16 +344,16 @@ const RoomPage = () => {
             <main className="flex-1 flex flex-col min-w-0 relative">
 
                 {/* HEADER INFO */}
-                <div className="p-4 px-8 border-b border-border-color bg-bg-secondary/50 backdrop-blur-md flex items-center justify-between shrink-0 gap-6">
+                <div className="p-4 px-8 border-b border-border-color bg-bg-secondary flex items-center justify-between shrink-0 gap-6">
                     <div className="flex items-center gap-8 overflow-x-auto no-scrollbar">
                         <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Project NODE</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest opacity-50">Project NODE</span>
                             <span className="text-xs font-bold font-mono">{roomId}</span>
                         </div>
                         <div className="h-6 w-[1px] bg-border-color" />
                         <div className="relative group/collab">
                             <div className="flex flex-col cursor-pointer" onClick={() => setShowCollabList(!showCollabList)}>
-                                <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Lobby</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest opacity-50">Lobby</span>
                                 <div className="flex items-center gap-1.5">
                                     <Users className="w-3 h-3" />
                                     <span className="text-xs font-bold">{collaborators.length || 1} Active</span>
@@ -365,14 +361,18 @@ const RoomPage = () => {
                             </div>
 
                             {/* Fixed Collaborators List UI */}
-                            {(showCollabList || true) && collaborators.length > 0 && (
-                                <div className="absolute top-12 left-0 z-[60] bg-bg-secondary border border-border-color p-2 rounded-lg shadow-2xl min-w-[140px] opacity-0 group-hover/collab:opacity-100 pointer-events-none group-hover/collab:pointer-events-auto transition-opacity duration-200">
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-30 mb-2 p-1">Connected Entities</p>
+                            {showCollabList && (
+                                <div className="absolute top-12 left-0 z-[60] bg-bg-secondary border border-border-color p-2 shadow-2xl min-w-[140px]">
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-50 mb-2 p-1">Connected Entities</p>
                                     <div className="space-y-1">
-                                        {collaborators.map((c, i) => (
-                                            <div key={i} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/5">
-                                                <div className="w-4 h-4 rounded-md flex items-center justify-center text-[7px] text-bg-primary font-black uppercase" style={{ backgroundColor: getUserColor(c.name) }}>{c.name?.[0]}</div>
-                                                <span className="text-[10px] font-bold text-text-primary truncate">{c.name} {c.name === userName && '(You)'}</span>
+                                        {(collaborators.length > 0 ? collaborators : [{ name: userName }]).map((c, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => handleUserClick(c.name)}
+                                                className="flex items-center gap-2 p-1.5 hover:bg-text-primary hover:text-bg-primary cursor-pointer transition-colors"
+                                            >
+                                                <div className="w-4 h-4 flex items-center justify-center text-[7px] border border-border-color font-black uppercase">{c.name?.[0]}</div>
+                                                <span className="text-[10px] font-bold truncate">{c.name} {c.name === userName && '(You)'}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -382,15 +382,12 @@ const RoomPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4 ml-auto">
-                        <button onClick={() => setCurrentTheme(currentTheme === 'dark' ? 'light' : 'dark')} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                        <button onClick={() => setCurrentTheme(currentTheme === 'dark' ? 'light' : 'dark')} className="p-2 hover:opacity-50 transition-opacity">
                             {currentTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => setIsHelpOpen(true)} className="hidden sm:flex items-center gap-2 text-[10px] font-bold hover:text-text-primary transition-colors opacity-50 uppercase tracking-widest">
-                            <HelpCircle className="w-3.5 h-3.5" /> Manual
-                        </button>
                         <div className="hidden sm:block h-4 w-[1px] bg-border-color" />
-                        <a href="https://buy-me-a-coffee.com" target="_blank" className="flex items-center gap-2 bg-text-primary text-bg-primary px-3 py-1.5 rounded-full text-[9px] font-black hover:opacity-80 transition-all uppercase">
-                            <Coffee className="w-3 h-3 fill-current" /> Coffee
+                        <a href="https://buymeacoffee.com" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center hover:opacity-80 transition-opacity">
+                            <img src={bmcButton} alt="Buy me a coffee" className="h-8" />
                         </a>
                     </div>
                 </div>
@@ -409,14 +406,14 @@ const RoomPage = () => {
                                     onClick={() => handleFileOpen(fid)}
                                     className={`
                                         flex items-center h-full px-4 border-r border-border-color cursor-pointer transition-all relative flex-shrink flex-grow min-w-[80px] max-w-[180px] group/tab
-                                        ${isActive ? 'bg-bg-primary text-text-primary shadow-[inset_0_2px_0_var(--accent-color)] active-tab' : 'hover:bg-bg-primary/50 text-text-secondary'}
+                                        ${isActive ? 'bg-bg-primary text-text-primary tab-active' : 'hover:bg-text-primary hover:text-bg-primary text-text-primary'}
                                     `}
                                 >
-                                    <IconComp className="w-3 h-3 mr-2 shrink-0" style={{ color: file.iconColor }} />
+                                    <IconComp className="w-3 h-3 mr-2 shrink-0" style={{ color: 'inherit' }} />
                                     <span className="truncate flex-1 text-[11px] font-bold tracking-tight uppercase">{file.name}</span>
                                     <X
                                         onClick={(e) => handleFileClose(e, fid)}
-                                        className="w-3 h-3 ml-2 opacity-0 group-hover/tab:opacity-100 hover:bg-white/10 rounded p-0.5 cursor-pointer"
+                                        className="w-3 h-3 ml-2 opacity-0 group-hover/tab:opacity-100 hover:bg-bg-primary hover:text-text-primary p-0.5 cursor-pointer"
                                     />
                                 </div>
                             );
@@ -424,21 +421,18 @@ const RoomPage = () => {
                     </div>
 
                     {/* 3 Dots Menu */}
-                    <div className="absolute right-2 flex items-center gap-1 bg-bg-secondary pl-2">
+                    <div className="absolute right-2 flex items-center gap-1 bg-bg-secondary pl-2 z-[60]">
                         <button
                             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                            className="p-1 hover:bg-white/5 rounded"
+                            className="p-1 hover:opacity-50"
                         >
-                            <MoreVertical className="w-4 h-4 text-text-secondary" />
+                            <MoreVertical className="w-4 h-4 text-text-primary" />
                         </button>
 
                         {moreMenuOpen && (
-                            <div className="absolute top-10 right-0 z-50 bg-bg-secondary border border-border-color shadow-2xl rounded-lg p-2 min-w-[160px]">
-                                <button onClick={closeAllTabs} className="w-full text-left px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/10 text-rose-500 rounded flex items-center gap-2">
+                            <div className="absolute top-10 right-0 z-50 bg-bg-secondary border border-border-color shadow-none p-2 min-w-[160px]">
+                                <button onClick={closeAllTabs} className="w-full text-left px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-text-primary hover:text-bg-primary flex items-center gap-2">
                                     <FileMinus className="w-3 h-3" /> Close All Tabs
-                                </button>
-                                <button onClick={() => setMoreMenuOpen(false)} className="w-full text-left px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 rounded flex items-center gap-2">
-                                    <Settings className="w-3 h-3" /> Editor Settings
                                 </button>
                             </div>
                         )}
@@ -457,28 +451,28 @@ const RoomPage = () => {
 
                                 <div className="space-y-10 max-w-3xl border-l-2 border-border-color ml-4">
                                     {(roomData.comments || []).length === 0 ? (
-                                        <div className="pl-8 text-text-secondary/20 font-black italic uppercase text-2xl tracking-tighter">Void...</div>
+                                        <div className="pl-8 text-text-primary opacity-20 font-black italic uppercase text-2xl tracking-tighter">Void...</div>
                                     ) : (
                                         roomData.comments.map(c => (
                                             <div key={c.commentId} className="relative group pr-4">
                                                 {/* Left Decorative Line / Avatar */}
-                                                <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-md border-2 border-bg-primary shadow-sm flex items-center justify-center text-[8px] font-black text-bg-primary" style={{ backgroundColor: getUserColor(c.author) }}>
+                                                <div className="absolute -left-[11px] top-0 w-5 h-5 border-2 border-bg-primary flex items-center justify-center text-[8px] font-black text-bg-primary bg-text-primary">
                                                     {c.author[0]}
                                                 </div>
 
                                                 <div className="pl-8">
                                                     <div className="flex items-center gap-3 mb-2">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: getUserColor(c.author) }}>{c.author}</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">{c.author}</span>
                                                         <span className="text-[8px] font-bold opacity-30 uppercase">{new Date(c.createdAt).toLocaleTimeString()}</span>
 
                                                         <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-3">
                                                             {c.author === userName && (
                                                                 <>
-                                                                    <button onClick={() => { setEditingCommentId(c.commentId); setEditingCommentText(c.text) }} className="text-[8px] font-black text-text-secondary hover:text-text-primary uppercase">Edit</button>
-                                                                    <button onClick={() => handleDeleteComment(c.commentId)} className="text-[8px] font-black text-rose-500/50 hover:text-rose-500 uppercase">Delete</button>
+                                                                    <button onClick={() => { setEditingCommentId(c.commentId); setEditingCommentText(c.text) }} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Edit</button>
+                                                                    <button onClick={() => handleDeleteComment(c.commentId)} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Delete</button>
                                                                 </>
                                                             )}
-                                                            <button onClick={() => handleFileOpen(c.editorId)} className="text-[8px] font-black text-text-secondary hover:text-text-primary uppercase">Jump</button>
+                                                            <button onClick={() => handleFileOpen(c.editorId)} className="text-[8px] font-black text-text-primary hover:opacity-50 uppercase">Jump</button>
                                                         </div>
                                                     </div>
 
@@ -486,15 +480,15 @@ const RoomPage = () => {
                                                         <div className="flex gap-2">
                                                             <input
                                                                 autoFocus
-                                                                className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs outline-none"
+                                                                className="flex-1 bg-transparent border border-border-color px-2 py-1 text-xs outline-none text-text-primary"
                                                                 value={editingCommentText}
                                                                 onChange={(e) => setEditingCommentText(e.target.value)}
                                                                 onKeyDown={(e) => e.key === 'Enter' && submitCommentEdit(c.commentId)}
                                                             />
-                                                            <Check onClick={() => submitCommentEdit(c.commentId)} className="w-4 h-4 text-green-500 cursor-pointer" />
+                                                            <Check onClick={() => submitCommentEdit(c.commentId)} className="w-4 h-4 text-text-primary cursor-pointer" />
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-text-primary/70 leading-relaxed max-w-xl">{c.text}</p>
+                                                        <p className="text-sm text-text-primary opacity-80 leading-relaxed max-w-xl">{c.text}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -512,11 +506,11 @@ const RoomPage = () => {
                                         onChange={(e) => setDirectComment(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handlePostDirectComment()}
                                         placeholder={`Broadcast as ${userName}...`}
-                                        className="flex-1 bg-bg-primary border border-border-color rounded-xl px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all"
+                                        className="flex-1 bg-bg-primary border border-border-color rounded-none px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all text-text-primary"
                                     />
                                     <button
                                         onClick={handlePostDirectComment}
-                                        className="bg-text-primary text-bg-primary p-3 rounded-xl hover:opacity-80 transition-opacity"
+                                        className="bg-text-primary text-bg-primary p-3 hover:opacity-80 transition-opacity"
                                     >
                                         <Send className="w-5 h-5" />
                                     </button>
@@ -543,15 +537,15 @@ const RoomPage = () => {
                                     comments: [...(prev.comments || []), c]
                                 }));
                             }}
+                            collaborators={collaborators}
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12 text-center">
-                            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                                <Terminal className="w-10 h-10 opacity-20" />
+                            <div className="w-24 h-24 border border-border-color rounded-full flex items-center justify-center mb-4">
+                                <Terminal className="w-10 h-10 opacity-20 text-text-primary" />
                             </div>
-                            <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40">Workspace Ready</h3>
-                            <p className="max-w-xs text-text-secondary text-xs uppercase font-bold tracking-widest leading-loose">Initialize a kernel module from the explorer to begin collaborative processing.</p>
-                            <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
+                            <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40 text-text-primary">Workspace Ready</h3>
+                            <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
                         </div>
                     )}
                 </div>
@@ -564,33 +558,13 @@ const RoomPage = () => {
                         {Object.keys(ICON_MAP).map(iconName => (
                             <button
                                 key={iconName}
-                                onClick={() => updateEditorStyle(editingIconEditorId, iconName, roomData.editors.find(e => e.editorId === editingIconEditorId).iconColor)}
-                                className="p-4 bg-bg-primary border border-border-color hover:border-text-primary rounded-2xl flex items-center justify-center transition-all group"
+                                onClick={() => updateEditorStyle(editingIconEditorId, iconName, 'var(--text-primary)')}
+                                className="p-4 bg-bg-primary border border-border-color hover:bg-text-primary hover:text-bg-primary flex items-center justify-center transition-all group"
                             >
-                                {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6 opacity-40 group-hover:opacity-100" })}
+                                {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6" })}
                             </button>
                         ))}
                     </div>
-                    <div className="flex gap-3 flex-wrap justify-center border-t border-border-color pt-8">
-                        {COLOR_PALETTE.map(color => (
-                            <button
-                                key={color}
-                                onClick={() => updateEditorStyle(editingIconEditorId, roomData.editors.find(e => e.editorId === editingIconEditorId).icon, color)}
-                                className="w-10 h-10 rounded-full border-4 border-bg-secondary hover:scale-110 transition-transform flex items-center justify-center shadow-lg"
-                                style={{ backgroundColor: color }}
-                            >
-                                {roomData.editors.find(e => e.editorId === editingIconEditorId)?.iconColor === color && <Check className="w-4 h-4 text-black mix-blend-difference" />}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="System Overview">
-                <div className="space-y-6 text-[10px] font-black uppercase tracking-widest leading-relaxed opacity-60">
-                    <p><span className="text-text-primary">Direct Input:</span> Use the broadcast bar in discussions to post global workspace updates.</p>
-                    <p><span className="text-text-primary">Theme Control:</span> Toggle between High-Contrast Dark and Paper Light modes via the header control.</p>
-                    <p><span className="text-text-primary">Module Ops:</span> Double-click icons to define archetypes. Hover to reveal deletion triggers.</p>
                 </div>
             </Modal>
         </div>

@@ -50,6 +50,13 @@ io.on('connection', (socket) => {
         console.log(`User ${socket.id} (${roomsUsers[roomId][socket.id].name}) joined room ${roomId}`);
     });
 
+    socket.on('rename-user', ({ roomId, newName }) => {
+        if (roomsUsers[roomId] && roomsUsers[roomId][socket.id]) {
+            roomsUsers[roomId][socket.id].name = newName;
+            io.to(roomId).emit('collaborators-update', Object.values(roomsUsers[roomId]));
+        }
+    });
+
     // Throttled save to DB (every 2 seconds)
     const editorSaveTimeouts = {};
     socket.on('editor-update', async ({ roomId, editorId, content }) => {

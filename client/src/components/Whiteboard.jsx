@@ -4,9 +4,16 @@ const Whiteboard = ({ socket, roomId, actions, onAction }) => {
     const canvasRef = useRef(null);
     const contextRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
-    const [color, setColor] = useState('#6366f1');
+    const [color, setColor] = useState('#FFFFFF'); // Default white for dark mode
     const [lineWidth, setLineWidth] = useState(3);
     const lastPoint = useRef(null);
+
+    useEffect(() => {
+        // Set initial color based on theme if possible, but manual override is safer for canvas
+        const computedStyle = getComputedStyle(document.body);
+        const textColor = computedStyle.getPropertyValue('--text-primary').trim();
+        setColor(textColor || '#FFFFFF');
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -95,26 +102,34 @@ const Whiteboard = ({ socket, roomId, actions, onAction }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">
+        <div className="flex flex-col h-full bg-bg-secondary rounded-none border border-border-color overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border-color bg-bg-primary">
                 <div className="flex items-center gap-4">
-                    <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        className="w-8 h-8 rounded cursor-pointer bg-transparent border-none"
-                    />
+                    {/* Strict B&W Palette */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setColor('#FFFFFF')}
+                            className={`w-6 h-6 rounded-none border border-white ${color === '#FFFFFF' ? 'bg-white' : 'bg-black'}`}
+                            title="White"
+                        />
+                        <button
+                            onClick={() => setColor('#000000')}
+                            className={`w-6 h-6 rounded-none border border-white ${color === '#000000' ? 'bg-white' : 'bg-black'}`}
+                            title="Black"
+                        />
+                    </div>
+
                     <input
                         type="range"
                         min="1" max="20"
                         value={lineWidth}
                         onChange={(e) => setLineWidth(e.target.value)}
-                        className="w-32 accent-indigo-500"
+                        className="w-32 accent-text-primary"
                     />
                 </div>
                 <button
                     onClick={clearBoard}
-                    className="px-4 py-2 bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-300 rounded-lg transition-all text-sm font-medium"
+                    className="px-4 py-2 bg-bg-secondary border border-border-color hover:bg-text-primary hover:text-bg-primary text-text-primary uppercase text-xs font-bold tracking-widest transition-all"
                 >
                     Clear Board
                 </button>
