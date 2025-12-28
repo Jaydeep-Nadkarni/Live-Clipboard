@@ -6,7 +6,7 @@ import RoomPage from './pages/RoomPage';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-slate-900 text-slate-100">
+      <div className="min-h-screen bg-bg-primary text-text-primary">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/:roomId" element={<RoomPage />} />
