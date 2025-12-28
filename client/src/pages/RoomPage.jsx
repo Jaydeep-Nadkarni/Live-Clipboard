@@ -166,6 +166,21 @@ const RoomPage = () => {
         };
     }, [roomId, userName]);
 
+    const handleDeleteRoom = async () => {
+        if (!confirm('Are you sure you want to delete this room? This cannot be undone.')) return;
+        
+        try {
+            await axios.delete(`${API_BASE}/api/rooms/${roomId}`);
+            // Clean up local storage
+            localStorage.removeItem(`room_${roomId}`);
+            // Clear any user-specific data for this room
+            localStorage.removeItem(`userName_${roomId}`);
+            navigate('/');
+        } catch (error) {
+            console.error('Error deleting room:', error);
+        }
+    };
+
     const fetchRoomData = async (shouldSetActive = true) => {
         try {
             const resp = await axios.get(`${API_BASE}/rooms/check/${roomId}`);
@@ -191,13 +206,22 @@ const RoomPage = () => {
         setMobileMenuOpen(false);
     };
 
-    const handleFileClose = (e, id) => {
-        e.stopPropagation();
-        const newOpened = openedFiles.filter(fid => fid !== id);
-        setOpenedFiles(newOpened);
-        if (activeEditorId === id) {
-            setActiveEditorId(newOpened.length > 0 ? newOpened[newOpened.length - 1] : null);
-        }
+    const handleCloseFile = (fileId) => {
+        setOpenedFiles(prev => {
+            const newFiles = prev.filter(f => f !== fileId);
+            // If we're closing the active editor, set active to another file or null
+            if (activeEditorId === fileId) {
+                setActiveEditorId(newFiles.length > 0 ? newFiles[0] : null);
+            }
+            return newFiles;
+        });
+        
+        // Clean up any related editor state
+        setViewedEditors(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(fileId);
+            return newSet;
+        });
     };
 
     const closeAllTabs = () => {

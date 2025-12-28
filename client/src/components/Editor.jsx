@@ -168,13 +168,22 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
         content: content || '',
         onUpdate: ({ editor }) => {
             const json = editor.getJSON();
-            if (typeof onUpdate === 'function') onUpdate(json);
-            if (socket) {
-                socket.emit('editor-update', { roomId, editorId, content: json });
-                emitTyping(socket, roomId, userName, true);
-                stopTyping(socket, roomId, userName);
-                emitCursor(socket, roomId, editorId, userName, editor.state.selection);
-            }
+            const emitEditorUpdate = useCallback(debounce((content) => {
+                if (socket && roomId && editorId) {
+                    const update = {
+                        roomId,
+                        editorId,
+                        content,
+                        user: { name: userName },
+                        timestamp: Date.now() // Add timestamp for conflict resolution
+                    };
+                    socket.emit('editor-update', update);
+                    onUpdate(editorId, content, false);
+                }
+            }, 100), [socket, roomId, editorId, userName, onUpdate]);
+            lastUpdateTime.current = Date.now();
+            emitEditorUpdate(editor.getHTML());
+            emitCursor(socket, roomId, editorId, userName, editor.state.selection);
         },
         onSelectionUpdate: ({ editor }) => {
             emitCursor(socket, roomId, editorId, userName, editor.state.selection);
@@ -184,24 +193,34 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
     useEffect(() => {
         if (!editor || !socket) return;
         const handleRemoteUpdate = (data) => {
-            if (data.editorId === editorId && data.socketId !== socket.id) {
-                const currentJSON = JSON.stringify(editor.getJSON());
-                const newJSON = JSON.stringify(data.content);
-                if (currentJSON !== newJSON) {
-                    editor.commands.setContent(data.content, false);
-                }
+            if (data.editorId !== editorId || data.user.name === userName) {
+                return; // Ignore updates for other editors or from self
+            }
+
+            const updateTime = data.timestamp || 0;
+
+            // Only apply the update if it's newer than our last update
+            if (updateTime > lastUpdateTime.current) {
+                lastUpdateTime.current = updateTime;
+                editor.commands.setContent(data.content, false);
             }
         };
+
+        socket.on('editor-updated', handleRemoteUpdate);
+        return () => {
+            socket.off('editor-updated', handleRemoteUpdate);
+        };
+    }, [socket, editorId, userName, editor]);
+
+    useEffect(() => {
+        if (!editor || !socket) return;
         const handleRemoteCursor = ({ editorId: eId, cursor, user, socketId }) => {
             if (eId !== editorId) return;
             setRemoteCursors(prev => ({ ...prev, [socketId]: { cursor, user } }));
         };
 
-        socket.on('editor-remote-update', handleRemoteUpdate);
         socket.on('remote-cursor-update', handleRemoteCursor);
-
         return () => {
-            socket.off('editor-remote-update', handleRemoteUpdate);
             socket.off('remote-cursor-update', handleRemoteCursor);
         };
     }, [editor, socket, editorId]);
