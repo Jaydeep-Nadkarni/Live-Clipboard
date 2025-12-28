@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -65,6 +65,13 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
     const [commentText, setCommentText] = useState('');
     const [copyFeedback, setCopyFeedback] = useState(false);
     const [remoteCursors, setRemoteCursors] = useState({});
+
+    const lastUpdateTime = useRef(0);
+    const emitEditorUpdateDebounced = useRef(debounce((update) => {
+        if (socket) {
+            socket.emit('editor-update', update);
+        }
+    }, 100)).current;
 
     const emitCursor = React.useRef(throttle((socket, roomId, editorId, userName, selection) => {
         if (socket) {
@@ -168,21 +175,16 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
         content: content || '',
         onUpdate: ({ editor }) => {
             const json = editor.getJSON();
-            const emitEditorUpdate = useCallback(debounce((content) => {
-                if (socket && roomId && editorId) {
-                    const update = {
-                        roomId,
-                        editorId,
-                        content,
-                        user: { name: userName },
-                        timestamp: Date.now() // Add timestamp for conflict resolution
-                    };
-                    socket.emit('editor-update', update);
-                    onUpdate(editorId, content, false);
-                }
-            }, 100), [socket, roomId, editorId, userName, onUpdate]);
-            lastUpdateTime.current = Date.now();
-            emitEditorUpdate(editor.getHTML());
+            const update = {
+                roomId,
+                editorId,
+                content: json,
+                user: { name: userName },
+                timestamp: Date.now()
+            };
+            lastUpdateTime.current = update.timestamp;
+            emitEditorUpdateDebounced(update);
+            if (onUpdate) onUpdate(json);
             emitCursor(socket, roomId, editorId, userName, editor.state.selection);
         },
         onSelectionUpdate: ({ editor }) => {
@@ -193,22 +195,22 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
     useEffect(() => {
         if (!editor || !socket) return;
         const handleRemoteUpdate = (data) => {
-            if (data.editorId !== editorId || data.user.name === userName) {
+            if (data.editorId !== editorId || data.user?.name === userName) {
                 return; // Ignore updates for other editors or from self
             }
 
             const updateTime = data.timestamp || 0;
 
-            // Only apply the update if it's newer than our last update
+            // Only apply the update if it's newer than our last local update
             if (updateTime > lastUpdateTime.current) {
                 lastUpdateTime.current = updateTime;
                 editor.commands.setContent(data.content, false);
             }
         };
 
-        socket.on('editor-updated', handleRemoteUpdate);
+        socket.on('editor-remote-update', handleRemoteUpdate);
         return () => {
-            socket.off('editor-updated', handleRemoteUpdate);
+            socket.off('editor-remote-update', handleRemoteUpdate);
         };
     }, [socket, editorId, userName, editor]);
 

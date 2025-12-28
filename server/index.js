@@ -59,8 +59,15 @@ io.on('connection', (socket) => {
 
     // Throttled save to DB (every 2 seconds)
     const editorSaveTimeouts = {};
-    socket.on('editor-update', async ({ roomId, editorId, content }) => {
-        socket.to(roomId).emit('editor-remote-update', { editorId, content, socketId: socket.id });
+    socket.on('editor-update', async ({ roomId, editorId, content, user, timestamp }) => {
+        // Broadcast the update with metadata for conflict resolution
+        socket.to(roomId).emit('editor-remote-update', {
+            editorId,
+            content,
+            user: user || (roomsUsers[roomId]?.[socket.id] ? { name: roomsUsers[roomId][socket.id].name } : undefined),
+            timestamp: timestamp || Date.now(),
+            socketId: socket.id
+        });
 
         const key = `${roomId}-${editorId}`;
         if (editorSaveTimeouts[key]) return;
