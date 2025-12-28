@@ -5,7 +5,8 @@ const CommentSchema = new mongoose.Schema({
     editorId: { type: String, required: true },
     text: { type: String, required: true },
     author: { type: String, required: true },
-    selection: { type: mongoose.Schema.Types.Mixed }, // Stores TiPTap range/pos info
+    selection: { type: mongoose.Schema.Types.Mixed },
+    parentId: { type: String, default: null }, // Support for YouTube-style threading
     createdAt: { type: Date, default: Date.now }
 });
 

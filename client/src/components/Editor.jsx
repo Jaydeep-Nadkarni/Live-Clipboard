@@ -8,19 +8,29 @@ import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
 import { Comment } from '../extensions/CommentExtension';
 import {
     Bold, Italic, MessageSquare, Highlighter,
-    Link as LinkIcon, Trash2, Check
+    Link as LinkIcon, Trash2, Check, Copy, MoreVertical
 } from 'lucide-react';
 import Modal from './Modal';
+
+const HIGHLIGHT_COLORS = [
+    { name: 'Yellow', color: '#ffeb3b40' },
+    { name: 'Green', color: '#4caf5040' },
+    { name: 'Blue', color: '#2196f340' },
+    { name: 'Red', color: '#f4433640' },
+    { name: 'Purple', color: '#9c27b040' },
+    { name: 'Gray', color: '#ffffff20' }
+];
 
 const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddComment }) => {
     const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
     const [commentText, setCommentText] = useState('');
+    const [copyFeedback, setCopyFeedback] = useState(false);
 
     const editor = useEditor({
         extensions: [
             StarterKit,
             Placeholder.configure({
-                placeholder: 'Start typing documents...',
+                placeholder: 'Type something to collaborate...',
             }),
             Highlight.configure({ multicolor: true }),
             BubbleMenuExtension,
@@ -28,13 +38,13 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
         ],
         editorProps: {
             attributes: {
-                class: 'focus:outline-none min-h-full text-[#cccccc] font-mono text-[14px] leading-relaxed p-8 pt-4',
+                class: 'focus:outline-none min-h-full font-mono text-[14px] leading-relaxed p-8 pt-4 transition-colors duration-300',
             }
         },
         content: content || '',
         onUpdate: ({ editor }) => {
             const json = editor.getJSON();
-            onUpdate(json);
+            if (typeof onUpdate === 'function') onUpdate(json);
             if (socket) {
                 socket.emit('editor-update', { roomId, editorId, content: json });
             }
@@ -43,7 +53,6 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
 
     useEffect(() => {
         if (!editor || !socket) return;
-
         const handleRemoteUpdate = (data) => {
             if (data.editorId === editorId && data.socketId !== socket.id) {
                 const currentJSON = JSON.stringify(editor.getJSON());
@@ -53,12 +62,10 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
                 }
             }
         };
-
         socket.on('editor-remote-update', handleRemoteUpdate);
         return () => socket.off('editor-remote-update', handleRemoteUpdate);
     }, [editor, socket, editorId]);
 
-    // Handle initial content load
     useEffect(() => {
         if (editor && content) {
             const currentJSON = JSON.stringify(editor.getJSON());
@@ -69,11 +76,16 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
         }
     }, [editor, content]);
 
+    const handleCopy = () => {
+        const text = editor.getText();
+        navigator.clipboard.writeText(text);
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+    };
+
     const handleAddComment = () => {
         if (!commentText.trim()) return;
         const commentId = Math.random().toString(36).substring(2, 9);
-
-        // Wrap selected text with comment mark
         editor.chain().focus().setComment(commentId).run();
 
         const newComment = {
@@ -84,10 +96,7 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
             createdAt: new Date().toISOString()
         };
 
-        if (socket) {
-            socket.emit('add-comment', { roomId, comment: newComment });
-        }
-
+        if (socket) socket.emit('add-comment', { roomId, comment: newComment });
         if (onAddComment) onAddComment(newComment);
 
         setCommentText('');
@@ -97,8 +106,20 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
     if (!editor) return null;
 
     return (
-        <div className="h-full w-full bg-black relative flex flex-col">
-            <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex items-center gap-1 bg-[#111] border border-[#222] p-1 rounded-lg shadow-2xl">
+        <div className="h-full w-full relative flex flex-col group">
+
+            {/* Action Bar inside Editor */}
+            <div className="absolute top-4 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                <button
+                    onClick={handleCopy}
+                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-md flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest backdrop-blur-md"
+                >
+                    {copyFeedback ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                    {copyFeedback ? 'Copied' : 'Copy File'}
+                </button>
+            </div>
+
+            <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex overflow-hidden items-center bg-[#111] border border-[#222] p-1 rounded-lg shadow-2xl">
                 <button
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     className={`p-2 hover:bg-[#222] rounded ${editor.isActive('bold') ? 'text-white' : 'text-[#444]'}`}
@@ -112,12 +133,21 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
                     <Italic className="w-3.5 h-3.5" />
                 </button>
                 <div className="w-[1px] h-4 bg-[#222] mx-1" />
-                <button
-                    onClick={() => editor.chain().focus().toggleHighlight({ color: '#ffffff20' }).run()}
-                    className={`p-2 hover:bg-[#222] rounded ${editor.isActive('highlight') ? 'text-white' : 'text-[#444]'}`}
-                >
-                    <Highlighter className="w-3.5 h-3.5" />
-                </button>
+
+                {/* Multi-Color Highlight Picker */}
+                <div className="flex gap-0.5 px-1">
+                    {HIGHLIGHT_COLORS.map(h => (
+                        <button
+                            key={h.name}
+                            onClick={() => editor.chain().focus().toggleHighlight({ color: h.color }).run()}
+                            className="w-4 h-4 rounded-full border border-white/10 hover:scale-110 transition-transform"
+                            style={{ backgroundColor: h.color }}
+                            title={h.name}
+                        />
+                    ))}
+                </div>
+
+                <div className="w-[1px] h-4 bg-[#222] mx-1" />
                 <button
                     onClick={() => setIsCommentModalOpen(true)}
                     className="p-2 hover:bg-[#222] rounded text-[#444] hover:text-white"
@@ -134,24 +164,23 @@ const Editor = ({ content, onUpdate, socket, roomId, editorId, userName, onAddCo
             <Modal
                 isOpen={isCommentModalOpen}
                 onClose={() => setIsCommentModalOpen(false)}
-                title="Add Comment"
+                title="Context Discussion"
             >
                 <div className="space-y-4">
                     <textarea
                         autoFocus
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Type your comment..."
-                        className="w-full h-32 bg-[#000] border border-[#222] p-3 text-sm text-white focus:outline-none focus:border-[#444] rounded-lg resize-none"
+                        placeholder="Start a thread on this selection... Use @ to mention anyone (UI only)"
+                        className="w-full h-32 bg-transparent border border-white/10 p-3 text-sm focus:outline-none focus:border-white/20 rounded-lg resize-none"
                     />
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleAddComment}
-                            className="flex-1 bg-white text-black font-bold py-2 rounded-lg text-xs uppercase tracking-widest hover:bg-[#ccc] transition-colors"
-                        >
-                            Post Comment
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleAddComment}
+                        className="w-full bg-accent text-bg-primary font-bold py-2 rounded-lg text-xs uppercase tracking-widest hover:opacity-80 transition-opacity"
+                        style={{ backgroundColor: 'var(--accent-color)', color: 'var(--bg-primary)' }}
+                    >
+                        Post Discussion
+                    </button>
                 </div>
             </Modal>
         </div>

@@ -33,12 +33,21 @@ const roomRoutes = require('./routes/roomRoutes');
 app.use('/api/rooms', roomRoutes);
 
 // Socket.io logic
+const roomsUsers = {}; // roomId -> { socketId: { name } }
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('join-room', (roomId) => {
+    socket.on('join-room', (roomId, userData) => {
         socket.join(roomId);
-        console.log(`User ${socket.id} joined room ${roomId}`);
+
+        if (!roomsUsers[roomId]) roomsUsers[roomId] = {};
+        roomsUsers[roomId][socket.id] = { name: userData?.name || 'Guest' };
+
+        // Broadcast new user list
+        io.to(roomId).emit('collaborators-update', Object.values(roomsUsers[roomId]));
+
+        console.log(`User ${socket.id} (${roomsUsers[roomId][socket.id].name}) joined room ${roomId}`);
     });
 
     // Throttled save to DB (every 2 seconds)
@@ -91,6 +100,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('delete-editor', async ({ roomId, editorId }) => {
+        try {
+            await Room.findOneAndUpdate(
+                { roomId },
+                { $pull: { editors: { editorId } } }
+            );
+            socket.to(roomId).emit('room-remote-data-refetch');
+        } catch (err) {
+            console.error('Error deleting editor:', err);
+        }
+    });
+
     socket.on('add-comment', async ({ roomId, comment }) => {
         try {
             await Room.findOneAndUpdate(
@@ -103,7 +124,40 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('edit-comment', async ({ roomId, commentId, newText }) => {
+        try {
+            await Room.findOneAndUpdate(
+                { roomId, 'comments.commentId': commentId },
+                { $set: { 'comments.$.text': newText } }
+            );
+            socket.to(roomId).emit('room-remote-data-refetch');
+        } catch (err) {
+            console.error('Error editing comment:', err);
+        }
+    });
+
+    socket.on('delete-comment', async ({ roomId, commentId }) => {
+        try {
+            await Room.findOneAndUpdate(
+                { roomId },
+                { $pull: { comments: { commentId } } }
+            );
+            socket.to(roomId).emit('room-remote-data-refetch');
+        } catch (err) {
+            console.error('Error deleting comment:', err);
+        }
+    });
+
     socket.on('disconnect', () => {
+        // Find which room this user was in
+        for (const roomId in roomsUsers) {
+            if (roomsUsers[roomId][socket.id]) {
+                delete roomsUsers[roomId][socket.id];
+                io.to(roomId).emit('collaborators-update', Object.values(roomsUsers[roomId]));
+                if (Object.keys(roomsUsers[roomId]).length === 0) delete roomsUsers[roomId];
+                break;
+            }
+        }
         console.log('User disconnected:', socket.id);
     });
 });

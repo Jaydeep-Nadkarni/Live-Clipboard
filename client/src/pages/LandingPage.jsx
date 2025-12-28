@@ -73,13 +73,13 @@ const LandingPage = () => {
                 <div className="flex gap-6 mb-8 border-b border-[#3e3e42] pb-4">
                     <button
                         onClick={() => setMode('create')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'create' ? 'text-white border-b-2 border-[#007acc]' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
+                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'create' ? 'text-white border-b-2 border-white' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
                     >
                         Create Room
                     </button>
                     <button
                         onClick={() => setMode('join')}
-                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'join' ? 'text-white border-b-2 border-[#007acc]' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
+                        className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${mode === 'join' ? 'text-white border-b-2 border-white' : 'text-[#6e7681] hover:text-[#cccccc]'}`}
                     >
                         Join Room
                     </button>
@@ -96,16 +96,16 @@ const LandingPage = () => {
                                 value={roomId}
                                 onChange={handleIdChange}
                                 placeholder="room-id"
-                                className="w-full bg-[#3c3c3c] bg-opacity-20 border border-[#3e3e42] p-3 text-white focus:outline-none focus:border-[#007acc] transition-colors placeholder-[#6e7681]"
+                                className="w-full bg-[#111] border border-[#222] p-3 text-white focus:outline-none focus:border-[#444] transition-colors placeholder-[#444]"
                             />
                             {mode === 'create' && (
                                 <div className="absolute right-3 top-[2.3rem]">
                                     {isChecking ? (
-                                        <Loader className="w-4 h-4 text-[#007acc] animate-spin" />
+                                        <Loader className="w-4 h-4 text-[#444] animate-spin" />
                                     ) : isAvailable ? (
-                                        <Check className="w-4 h-4 text-emerald-500" />
+                                        <Check className="w-4 h-4 text-white" />
                                     ) : (
-                                        <span className="text-rose-500 text-xs font-bold">TAKEN</span>
+                                        <span className="text-white text-xs font-bold">TAKEN</span>
                                     )}
                                 </div>
                             )}
@@ -117,8 +117,8 @@ const LandingPage = () => {
                         disabled={mode === 'create' && !isAvailable}
                         className={`w-full py-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider transition-all
                             ${mode === 'create' && !isAvailable
-                                ? 'bg-[#3e3e42] text-[#6e7681] cursor-not-allowed'
-                                : 'bg-[#007acc] hover:bg-[#007acc]/90 text-white shadow-lg'}`}
+                                ? 'bg-[#111] text-[#444] cursor-not-allowed'
+                                : 'bg-white text-black hover:bg-[#ccc] shadow-lg'}`}
                     >
                         {mode === 'create' ? 'Initialize Environment' : 'Connect to Host'}
                         <ArrowRight className="w-4 h-4" />
