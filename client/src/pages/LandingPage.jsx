@@ -81,6 +81,14 @@ const LandingPage = () => {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors duration-500">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="absolute top-6 left-6 z-50"
+            >
+                <LinkIcon className="w-6 h-6" />
+            </motion.div>
             {/* Theme Toggle */}
             <motion.button
                 initial={{ opacity: 0 }}

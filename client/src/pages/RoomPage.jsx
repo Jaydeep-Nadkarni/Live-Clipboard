@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Plus, Share2, FileText, Settings,
-    MoreHorizontal, FolderOpen, Copy,
-    MessageSquare, Hash, User, X, Menu,
-    Coffee, HelpCircle, Sun, Users, Terminal,
+    Plus, Share2, FileText,
+    MoreHorizontal,
+    MessageSquare, User, X, Menu,
+    Sun, Terminal,
     File, Code, Image, Music, Database, Layout,
-    Check, Palette, Edit3, Trash2, Moon, Monitor,
-    Link as LinkIcon, Reply, Send, MoreVertical,
-    FileMinus, Search, Share
+    Check, Trash2, Moon,
+    Send, MoreVertical,
+    FileMinus
 } from 'lucide-react';
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -672,105 +672,104 @@ const RoomPage = () => {
                                                     </div>
                                                 )}
                                             </div>
-                        </div>
-                                ))
+                                        ))
                                     )}
+                                </div>
                             </div>
-                        </div>
 
                             {/* NEW DIRECT COMMENT BAR */}
-                    <div className="p-6 bg-bg-secondary border-t border-border-color">
-                        <div className="max-w-3xl mx-auto flex gap-4">
-                            <input
-                                type="text"
-                                value={directComment}
-                                onChange={(e) => setDirectComment(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handlePostDirectComment()}
-                                placeholder={`Broadcast as ${userName}...`}
-                                className="flex-1 bg-bg-primary border border-border-color rounded-none px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all text-text-primary"
-                            />
+                            <div className="p-6 bg-bg-secondary border-t border-border-color">
+                                <div className="max-w-3xl mx-auto flex gap-4">
+                                    <input
+                                        type="text"
+                                        value={directComment}
+                                        onChange={(e) => setDirectComment(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handlePostDirectComment()}
+                                        placeholder={`Broadcast as ${userName}...`}
+                                        className="flex-1 bg-bg-primary border border-border-color rounded-none px-6 py-3 text-sm focus:outline-none focus:border-text-primary transition-all text-text-primary"
+                                    />
+                                    <button
+                                        onClick={handlePostDirectComment}
+                                        className="bg-text-primary text-bg-primary p-3 hover:opacity-80 transition-opacity"
+                                    >
+                                        <Send className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : activeEditor ? (
+                        <Editor
+                            key={activeEditorId}
+                            content={activeEditor?.content}
+                            socket={socket}
+                            roomId={roomId}
+                            editorId={activeEditorId}
+                            userName={userName}
+                            onUpdate={(json) => {
+                                setRoomData(prev => ({
+                                    ...prev,
+                                    editors: prev.editors.map(ed => ed.editorId === activeEditorId ? { ...ed, content: json } : ed)
+                                }));
+                            }}
+                            onAddComment={(c) => {
+                                setRoomData(prev => ({
+                                    ...prev,
+                                    comments: [...(prev.comments || []), c]
+                                }));
+                            }}
+                            collaborators={collaborators}
+                            theme={currentTheme}
+                        />
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12 text-center">
+                            <div className="w-24 h-24 border border-border-color rounded-full flex items-center justify-center mb-4">
+                                <Terminal className="w-10 h-10 opacity-20 text-text-primary" />
+                            </div>
+                            <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40 text-text-primary">Workspace Ready</h3>
+                            <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
+                        </div>
+                    )}
+                </div>
+            </main>
+
+            {/* MODALS */}
+            <Modal isOpen={isIconModalOpen} onClose={() => setIsIconModalOpen(false)} title="Archetype Definition">
+                <div className="space-y-8">
+                    <div className="grid grid-cols-4 gap-3">
+                        {Object.keys(ICON_MAP).map(iconName => (
                             <button
-                                onClick={handlePostDirectComment}
-                                className="bg-text-primary text-bg-primary p-3 hover:opacity-80 transition-opacity"
+                                key={iconName}
+                                onClick={() => updateEditorStyle(editingIconEditorId, iconName, 'var(--text-primary)')}
+                                className="p-4 bg-bg-primary border border-border-color hover:bg-text-primary hover:text-bg-primary flex items-center justify-center transition-all group"
                             >
-                                <Send className="w-5 h-5" />
+                                {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6" })}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Notification Toast */}
+            {
+                mentionNotification && (
+                    <div className="fixed bottom-6 right-6 z-[100] bg-bg-primary border border-text-primary shadow-2xl p-4 max-w-sm animate-in fade-in slide-in-from-bottom-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-text-primary text-bg-primary flex items-center justify-center font-black rounded-full shrink-0">
+                                @
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary mb-1">New Mention</p>
+                                <p className="text-xs font-bold text-text-primary mb-1">{mentionNotification.author} mentioned you:</p>
+                                <p className="text-xs text-text-primary opacity-80 italic line-clamp-2">"{mentionNotification.text}"</p>
+                            </div>
+                            <button onClick={() => setMentionNotification(null)} className="ml-auto text-text-primary hover:opacity-50">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
-                </div >
-                ) : activeEditor ? (
-                <Editor
-                    key={activeEditorId}
-                    content={activeEditor?.content}
-                    socket={socket}
-                    roomId={roomId}
-                    editorId={activeEditorId}
-                    userName={userName}
-                    onUpdate={(json) => {
-                        setRoomData(prev => ({
-                            ...prev,
-                            editors: prev.editors.map(ed => ed.editorId === activeEditorId ? { ...ed, content: json } : ed)
-                        }));
-                    }}
-                    onAddComment={(c) => {
-                        setRoomData(prev => ({
-                            ...prev,
-                            comments: [...(prev.comments || []), c]
-                        }));
-                    }}
-                    collaborators={collaborators}
-                    theme={currentTheme}
-                />
-                ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12 text-center">
-                    <div className="w-24 h-24 border border-border-color rounded-full flex items-center justify-center mb-4">
-                        <Terminal className="w-10 h-10 opacity-20 text-text-primary" />
-                    </div>
-                    <h3 className="text-xl font-black uppercase tracking-[0.4em] opacity-40 text-text-primary">Workspace Ready</h3>
-                    <button onClick={createEditor} className="mt-4 px-8 py-3 bg-text-primary text-bg-primary text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">Create New Module</button>
-                </div>
-)}
-        </div >
-            </main >
-
-    {/* MODALS */ }
-    < Modal isOpen = { isIconModalOpen } onClose = {() => setIsIconModalOpen(false)} title = "Archetype Definition" >
-        <div className="space-y-8">
-            <div className="grid grid-cols-4 gap-3">
-                {Object.keys(ICON_MAP).map(iconName => (
-                    <button
-                        key={iconName}
-                        onClick={() => updateEditorStyle(editingIconEditorId, iconName, 'var(--text-primary)')}
-                        className="p-4 bg-bg-primary border border-border-color hover:bg-text-primary hover:text-bg-primary flex items-center justify-center transition-all group"
-                    >
-                        {React.createElement(ICON_MAP[iconName], { className: "w-6 h-6" })}
-                    </button>
-                ))}
-            </div>
+                )
+            }
         </div>
-            </Modal >
-
-    {/* Notification Toast */ }
-{
-    mentionNotification && (
-        <div className="fixed bottom-6 right-6 z-[100] bg-bg-primary border border-text-primary shadow-2xl p-4 max-w-sm animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-text-primary text-bg-primary flex items-center justify-center font-black rounded-full shrink-0">
-                    @
-                </div>
-                <div>
-                    <p className="text-[10px] uppercase font-black tracking-widest text-text-secondary mb-1">New Mention</p>
-                    <p className="text-xs font-bold text-text-primary mb-1">{mentionNotification.author} mentioned you:</p>
-                    <p className="text-xs text-text-primary opacity-80 italic line-clamp-2">"{mentionNotification.text}"</p>
-                </div>
-                <button onClick={() => setMentionNotification(null)} className="ml-auto text-text-primary hover:opacity-50">
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
-        </div>
-    )
-}
-        </div >
     );
 };
 
